@@ -17,7 +17,7 @@ from database.connection import db_manager
 from utils.embeds import EmbedBuilder, EmbedColors
 
 # Versión del bot
-BOT_VERSION = "1.0.0"
+BOT_VERSION = "1.2.0"
 
 
 class GeneralCog(commands.Cog, name="General"):
@@ -75,40 +75,71 @@ class GeneralCog(commands.Cog, name="General"):
 
         await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(name="help", description="Guía de módulos y comandos disponibles en el bot.")
+    @app_commands.command(name="help", description="Guía completa de módulos y comandos disponibles en el bot.")
     async def help_command(self, interaction: discord.Interaction) -> None:
-        """Despliega una lista explicativa de los módulos que integran el bot."""
+        """Despliega una lista explicativa detallada de los 31 comandos del bot."""
         embed = EmbedBuilder.base(
             title="📖 Menú de Ayuda • SilantroLabs Bot",
             description=(
-                "Bienvenido al panel de ayuda de **SilantroLabs Bot**. A continuación se detallan los módulos "
-                "disponibles en este servidor:"
+                "Bienvenido al panel de ayuda de **SilantroLabs Bot** (`v1.2.0`).\n"
+                "A continuación se detallan los 5 módulos funcionales y comandos disponibles:"
             ),
             color=EmbedColors.PRIMARY,
         )
         embed.add_field(
-            name="🛡️ 1. Administración",
-            value="`/kick`, `/ban`, `/unban`, `/timeout`, `/warn`, `/warnings`, `/clear`, `/setup admin`",
+            name="🛡️ 1. Moderación y Administración",
+            value=(
+                "• `/setup_admin`: Configura canal `#mod-logs` y rol de Staff.\n"
+                "• `/warn`, `/warnings`: Registro y consulta de sanciones por usuario.\n"
+                "• `/timeout`, `/untimeout`: Aislamiento temporal con motivo.\n"
+                "• `/kick`, `/ban`, `/unban`: Expulsión y baneo con control de jerarquía.\n"
+                "• `/clear`: Purga segura de mensajes recientes (últimos 14 días).\n"
+                "• `/role_add_all`, `/role_remove_all`: Asignación o revocación masiva de roles."
+            ),
             inline=False,
         )
         embed.add_field(
             name="🎫 2. Tickets de Soporte",
-            value="`/setup tickets`: Panel persistente con modales, canales dinámicos y transcripciones.",
+            value=(
+                "• `/setup_tickets`: Asigna categoría de tickets y canal de transcripciones.\n"
+                "• `/ticket_panel`: Despliega el panel público con botón interactivo persistente.\n"
+                "• `/ticket_add`, `/ticket_remove`: Concede o retira acceso a miembros en un ticket."
+            ),
             inline=False,
         )
         embed.add_field(
-            name="💡 3. Sugerencias",
-            value="`/sugerir <texto>`, `/sugerencia responder`: Embeds interactivos con votación 👍 / 👎.",
+            name="💡 3. Sugerencias Comunitarias",
+            value=(
+                "• `/setup_suggestions`: Establece el canal oficial de propuestas.\n"
+                "• `/sugerir`: Envía una propuesta comunitaria con botones 👍 / 👎.\n"
+                "• `/responder_sugerencia`: Aprueba, rechaza o marca en desarrollo.\n"
+                "• `/ver_sugerencia`: Consulta el estado detallado de una propuesta."
+            ),
             inline=False,
         )
         embed.add_field(
-            name="🎭 4. Autoroles",
-            value="`/setup autoroles`: Selector de roles interactivo mediante botón y menú desplegable efímero.",
+            name="🎭 4. Autoroles Interactivos",
+            value=(
+                "• `/setup_autoroles`: Crea un panel con botón `[🎭 Seleccionar Roles]`.\n"
+                "• `/autorol_agregar_opcion`: Añade un rol con emoji y descripción al menú.\n"
+                "• `/autorol_eliminar_opcion`: Elimina una opción del selector.\n"
+                "• `/autorol_listar`: Lista todos los menús y roles configurados."
+            ),
             inline=False,
         )
         embed.add_field(
-            name="📢 5. Anuncios",
-            value="`/anuncio`: Redacta en canal privado con vista previa y publica en el canal global de anuncios.",
+            name="📢 5. Anuncios y Comunicados Oficiales",
+            value=(
+                "• `/setup_anuncios`: Establece el canal público general de comunicados.\n"
+                "• `/anuncio`: Redacta con vista previa y publica en el canal global.\n"
+                "• `/anuncio_canal`, `/comunicado`: Publica en cualquier canal (`#reglas`, `#bienvenida`).\n"
+                "• `/anuncios_historial`: Consulta el registro histórico de anuncios."
+            ),
+            inline=False,
+        )
+        embed.add_field(
+            name="⚙️ Diagnóstico y Utilidad General",
+            value="• `/ping`: Latencia de Discord y SQLite • `/info`: Estadísticas • `/help`: Este menú.",
             inline=False,
         )
 

@@ -14,61 +14,65 @@ flowchart TD
         D_API["⚡ Discord Gateway & REST API"]:::discord
     end
 
-    subgraph CoreBot ["🤖 Core del Bot (Python discord.py v2)"]
+    subgraph CoreBot ["🤖 Core del Bot (Python 3.13 / discord.py v2)"]
         Main["🚀 main.py / Client Setup"]:::botCore
-        CogLoader["🧩 Gestor de Cogs / Extensiones"]:::botCore
+        CogLoader["🧩 Gestor Dinámico de Cogs (31 Comandos)"]:::botCore
         DB[("💾 SQLite Database (aiosqlite)
-• guild_config
+• guild_settings
 • infractions
 • tickets
-• suggestions
-• role_menus
+• suggestions & suggestion_votes
+• role_menus & role_options
 • announcements")]:::db
     end
 
-    subgraph ModuloAdmin ["🛡️ 1. Módulo Administración"]
-        AdminCogs["Comandos Slash (/ban, /kick, /timeout, /clear, /warn)"]:::admin
-        RoleCheck{"¿Jerarquía & Permisos OK?"}:::admin
-        ModLog["📝 Canal de Logs / Auditoría"]:::admin
-        WarnSystem["⚠️ Registro de Sanciones"]:::admin
+    subgraph ModuloAdmin ["🛡️ 1. Módulo Administración & Moderación"]
+        AdminCogs["Comandos Slash:
+/kick, /ban, /unban, /timeout, /clear, /warn, /warnings,
+/role_add_all, /role_remove_all"]:::admin
+        RoleCheck{"¿Jerarquía & Permisos OK?
+(bot.top_role > rol y mod.top_role > rol)"}:::admin
+        ModLog["📝 Canal de Logs / Auditoría (#mod-logs)"]:::admin
+        WarnSystem["⚠️ Registro de Sanciones en SQLite"]:::admin
     end
 
-    subgraph ModuloTickets ["🎫 2. Módulo de Tickets"]
+    subgraph ModuloTickets ["🎫 2. Módulo de Tickets de Soporte"]
         TicketPanel["📌 Panel Fijo (Persistent View)
 Botón: '📩 Crear Ticket'"]:::tickets
         TicketModal["📝 Modal Interactivo (Asunto / Motivo)"]:::tickets
         ChannelCreate["🔒 Crear Canal Privado (ticket-user-id)
-Permisos: Usuario + Staff + Bot"]:::tickets
-        TicketControls["🎛️ Controles: Reclamar | Transcribir | Cerrar"]:::tickets
-        Transcript["📄 Generador Transcripción (HTML/TXT)"]:::tickets
+Permisos Aislados: Usuario + Staff + Bot"]:::tickets
+        TicketControls["🎛️ Controles: Reclamar | Cerrar (2 pasos) | /ticket_add /ticket_remove"]:::tickets
+        Transcript["📄 Generador Transcripción HTML Dark Mode"]:::tickets
     end
 
     subgraph ModuloSugerencias ["💡 3. Módulo de Sugerencias"]
-        SugTrigger["Comando /sugerir o Botón Modal"]:::sug
-        SugEmbed["📊 Embed en #sugerencias
-Botones de Voto: 👍 / 👎"]:::sug
-        StaffReview{"Evaluación del Staff
-(Aprobar / Rechazar)"}:::sug
-        SugUpdated["🟢 Aprobada / 🔴 Rechazada
-(Actualización Embed + DM)"]:::sug
+        SugTrigger["Comando /sugerir o Formulario Modal"]:::sug
+        SugEmbed["📊 Embed Dinámico en #sugerencias
+Botones Voto: 👍 A favor | 👎 En contra"]:::sug
+        StaffReview{"Evaluación del Staff (/responder_sugerencia)
+(Aprobar / Rechazar / En Desarrollo)"}:::sug
+        SugUpdated["🟢 Aprobada / 🔴 Rechazada / 🟡 Desarrollo
+(Actualización Embed + Notificación DM)"]:::sug
     end
 
     subgraph ModuloRoles ["🎭 4. Módulo de Autoroles"]
-        RoleSetup["Comando /setup autoroles"]:::roles
+        RoleSetup["Comando /setup_autoroles en #roles"]:::roles
         RolePanel["📌 Embed Fijo con Botón Persistente
-[🎭 Elegir Roles]"]:::roles
+[🎭 Seleccionar Roles]"]:::roles
         RoleSelectMenu["🔽 Menú Desplegable Efímero (StringSelect)
-Multi-selección"]:::roles
-        RoleApply["🔄 Sincronizar Roles (Add/Remove)"]:::roles
+Multi-selección con Emojis y Descripción"]:::roles
+        RoleApply["🔄 Sincronización Atómica de Roles"]:::roles
     end
 
-    subgraph ModuloAnuncios ["📢 5. Módulo de Anuncios"]
-        NewsCommand["Comando /anuncio en Canal Privado Staff"]:::news
-        NewsModal["📝 Modal: Título, Cuerpo, Mención (@everyone/@here), Imagen"]:::news
-        NewsPreview["👁️ Vista Previa en Canal Privado
-Botones: [🚀 Publicar] [❌ Cancelar]"]:::news
-        NewsPublish["🌐 Publicación Oficial en Canal Global #anuncios
-(Embed estilizado + Ping seguro)"]:::news
+    subgraph ModuloAnuncios ["📢 5. Módulo de Anuncios & Comunicados"]
+        NewsCommand["Comando /anuncio (Canal Global)
+Comando /anuncio_canal & /comunicado (Canal Específico)"]:::news
+        NewsModal["📝 Modal: Título, Cuerpo Markdown, Mención (@everyone/@here), Banner"]:::news
+        NewsPreview["👁️ Vista Previa Privada de Seguridad
+Botones: [🚀 Publicar Anuncio] [❌ Cancelar]"]:::news
+        NewsPublish["🌐 Publicación Oficial en Canal Destino
+(#anuncios, #reglas, #bienvenida)"]:::news
     end
 
     %% Relaciones Gateway
