@@ -56,7 +56,7 @@ class BotConfig:
                 print(f"⚠️ Advertencia: 'GUILD_ID' ({raw_guild_id}) no es un número entero válido. Se omitirá.")
 
         command_prefix = os.getenv("COMMAND_PREFIX", "!").strip() or "!"
-        raw_db_path = os.getenv("DATABASE_PATH", "bot_database.sqlite3").strip()
+        raw_db_path = (os.getenv("DATABASE_PATH") or "bot_database.sqlite3").strip() or "bot_database.sqlite3"
         db_p = Path(raw_db_path)
         database_path = db_p if db_p.is_absolute() else BASE_DIR / db_p
         environment = os.getenv("ENVIRONMENT", "development").strip().lower()

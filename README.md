@@ -82,81 +82,133 @@ Bot Discord/
 
 ---
 
-## 🚀 Requisitos e Instalación Paso a Paso
+## 🚀 Métodos de Despliegue y Ejecución
 
-### 1. Requisitos Previos
-* **Python 3.10 o superior** instalado.
-* **Git** instalado.
-* Una cuenta de Discord y acceso al [Discord Developer Portal](https://discord.com/developers/applications).
+El bot está diseñado para ser totalmente agnóstico a la plataforma: funciona en un entorno local, en cualquier servidor VPS tradicional (Linux/Windows), en contenedores Docker y en plataformas de nube modernas como Railway.
 
-### 2. Configurar la Aplicación en Discord Developer Portal
-1. Ve a [Discord Developer Portal](https://discord.com/developers/applications) y haz clic en **New Application**.
-2. Dale un nombre a tu bot (ej. `Silantro Labs Bot`).
-3. Ve a la pestaña **Bot**:
-   * Haz clic en **Reset Token** y copia el token generado (este será tu `DISCORD_TOKEN`).
-   * Desplázate hacia abajo hasta **Privileged Gateway Intents** y activa:
-     * ✅ **Presence Intent**
-     * ✅ **Server Members Intent** (esencial para autoroles y moderación)
-     * ✅ **Message Content Intent** (esencial para comandos y contenido de mensajes)
-   * Haz clic en **Save Changes**.
-4. Ve a la pestaña **OAuth2 -> URL Generator**:
-   * En **SCOPES** marca: `bot` y `applications.commands`.
-   * En **BOT PERMISSIONS** marca: `Administrator` (o permisos individuales de gestión de canales, mensajes, roles, baneo y expulsión).
-   * Copia la URL generada al final e invita al bot a tu servidor de Discord.
+### Requisitos Previos Comunes
+1. Una cuenta de Discord y acceso al [Discord Developer Portal](https://discord.com/developers/applications).
+2. **Privileged Gateway Intents** activados en la pestaña **Bot**:
+   * ✅ **Presence Intent**
+   * ✅ **Server Members Intent** (esencial para autoroles, asignación masiva y moderación)
+   * ✅ **Message Content Intent** (esencial para comandos y contenido de mensajes)
+3. Invitar al bot a tu servidor mediante **OAuth2 -> URL Generator** con scopes `bot` y `applications.commands` (y permisos de Administrador o gestión de roles, canales y moderación).
 
-### 3. Clonar e Instalar el Proyecto
+---
 
-```bash
-# 1. Clonar el repositorio
-git clone <URL_DEL_REPOSITORIO>
-cd "Bot Discord"
+### Opción A: Despliegue en la Nube 24/7 con Railway (Recomendado para Producción)
 
-# 2. Crear el entorno virtual
-python -m venv .venv
+Railway permite mantener el bot activo 24/7 sin necesidad de mantener encendida una computadora propia.
 
-# 3. Activar el entorno virtual
-# En Windows (PowerShell):
-.\.venv\Scripts\Activate.ps1
-# En Linux / macOS:
-source .venv/bin/activate
+#### 1. Conectar Repositorio o Usar Railway CLI
+* Puedes crear un proyecto en [Railway.app](https://railway.com/) conectando directamente tu repositorio de GitHub, o usar el CLI de Railway:
+  ```bash
+  npm i -g @railway/cli
+  railway login
+  railway link
+  ```
 
-# 4. Instalar las dependencias
-pip install -r requirements.txt
-```
+#### 2. Configurar Variables de Entorno en Railway
+En la pestaña **Variables** de tu servicio en Railway, agrega:
+* `DISCORD_TOKEN`: Tu token de bot de Discord.
+* `GUILD_ID`: ID del servidor para sincronización instantánea (opcional).
+* `COMMAND_PREFIX`: `!` (o el prefijo deseado).
+* `ENVIRONMENT`: `production`.
+* `DATABASE_PATH`: `/app/data/bot_database.sqlite3`.
 
-### 4. Configurar las Variables de Entorno
+#### 3. Añadir Volumen Persistente (Imprescindible para SQLite)
+> [!IMPORTANT]
+> Los contenedores en la nube son efímeros por defecto: si el bot se reinicia o se despliega una nueva versión, cualquier cambio en la base de datos se perdería si no se usa un volumen persistente.
 
-Copia el archivo de plantilla `.env.example` y renómbralo a `.env`:
+1. En la pestaña del servicio en Railway, ve a **Settings** o **Volumes** y haz clic en **Add Volume**.
+2. Asigna la ruta de montaje (Mount Path): `/app/data`.
+3. *(Opcional)* Si ya tienes datos locales y quieres migrarlos a Railway:
+   ```bash
+   # Agregar tu clave SSH a Railway (requerido para transferencia de archivos)
+   railway ssh keys add
+   # Subir tu base de datos local al volumen persistente
+   railway volume files upload ./bot_database.sqlite3 /bot_database.sqlite3
+   ```
+4. El bot se iniciará automáticamente mediante el `Dockerfile` / `Procfile` y mantendrá los datos permanentemente seguros.
 
-```bash
-# En Windows:
-copy .env.example .env
+---
 
-# En Linux / macOS:
-cp .env.example .env
-```
+### Opción B: Despliegue con Docker y Docker Compose (Ideal para VPS propio)
 
-Abre `.env` con tu editor de texto y completa:
+Si cuentas con tu propio servidor VPS (Ubuntu, Debian, CentOS, etc.) o NAS (Synology, Unraid):
 
-```env
-DISCORD_TOKEN=tu_token_secreto_aqui
-GUILD_ID=123456789012345678   # ID de tu servidor para sincronización instantánea de comandos slash
-COMMAND_PREFIX=!
-DATABASE_PATH=bot_database.sqlite3
-ENVIRONMENT=development
-```
+1. **Clonar el repositorio:**
+   ```bash
+   git clone <URL_DEL_REPOSITORIO>
+   cd "Bot Discord"
+   ```
 
-### 5. Iniciar el Bot
+2. **Crear archivo `.env`:**
+   ```bash
+   cp .env.example .env
+   # Edita .env con tu editor favorito y coloca tu DISCORD_TOKEN
+   ```
 
-```bash
-# Con el entorno virtual activado:
-python main.py
-```
+3. **Iniciar con Docker Compose:**
+   ```bash
+   docker compose up -d --build
+   ```
+   * El archivo [`docker-compose.yml`](docker-compose.yml) creará automáticamente un volumen persistente de Docker llamado `bot_data` montado en `/app/data`, asegurando que la base de datos SQLite sobreviva a cualquier reinicio o actualización de imagen.
 
-Al iniciar por primera vez:
-1. Se inicializará automáticamente la base de datos `bot_database.sqlite3` con las 7 tablas del sistema.
-2. Se cargarán todos los cogs.
-3. Se sincronizarán los comandos Slash (`/ping`, `/info`, `/help`).
+4. **Ver registros en tiempo real:**
+   ```bash
+   docker compose logs -f
+   ```
+
+5. **Detener el bot:**
+   ```bash
+   docker compose down
+   ```
+
+---
+
+### Opción C: Ejecución Local / VPS Tradicional (Python Nativo)
+
+Si prefieres correr el bot directamente en tu máquina o en un VPS sin contenedores:
+
+1. **Requisitos:**
+   * Python 3.10 o superior (compatible hasta Python 3.13+).
+   * Git.
+
+2. **Crear y activar entorno virtual:**
+   ```bash
+   # Crear el entorno virtual
+   python -m venv .venv
+
+   # Activar en Windows (PowerShell):
+   .\.venv\Scripts\Activate.ps1
+   # O en Linux / macOS:
+   source .venv/bin/activate
+   ```
+
+3. **Instalar dependencias:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Configurar el archivo `.env`:**
+   ```bash
+   # Windows:
+   copy .env.example .env
+   # Linux / macOS:
+   cp .env.example .env
+   ```
+   Edita `.env` y define tu `DISCORD_TOKEN`. La base de datos se creará de forma predeterminada como `bot_database.sqlite3` en la misma carpeta del proyecto.
+
+5. **Iniciar el bot:**
+   ```bash
+   python main.py
+   ```
+
+6. **Ejecutar suite de pruebas unitarias (37 pruebas):**
+   ```bash
+   python -m unittest discover tests -v
+   ```
 
 ---
 
