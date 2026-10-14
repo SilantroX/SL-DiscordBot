@@ -125,8 +125,15 @@ class DatabaseManager:
 
     def __init__(self, db_path: Optional[Path] = None) -> None:
         if db_path is None:
-            # Ruta predeterminada en la raíz del proyecto
-            self.db_path = Path(__file__).resolve().parent.parent / "bot_database.sqlite3"
+            # Consultar si hay una ruta definida en config o variables de entorno
+            try:
+                from config import config
+                if config and config.database_path:
+                    self.db_path = Path(config.database_path)
+                else:
+                    self.db_path = Path(__file__).resolve().parent.parent / "bot_database.sqlite3"
+            except Exception:
+                self.db_path = Path(__file__).resolve().parent.parent / "bot_database.sqlite3"
         else:
             self.db_path = Path(db_path)
 
@@ -135,6 +142,8 @@ class DatabaseManager:
     async def connect(self) -> aiosqlite.Connection:
         """Establece la conexión asíncrona a la base de datos y habilita foreign keys."""
         if self._connection is None:
+            # Asegurar que el directorio contenedor exista (especialmente útil para volúmenes montados en la nube)
+            self.db_path.parent.mkdir(parents=True, exist_ok=True)
             logger.info("Abriendo conexión a la base de datos SQLite: %s", self.db_path)
             self._connection = await aiosqlite.connect(self.db_path)
             # Habilitar nombres de columnas accesibles como diccionarios (Row factory)

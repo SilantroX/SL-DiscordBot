@@ -1,0 +1,15 @@
+services:
+  silantrolabs-bot:
+    build: .
+    container_name: silantrolabs_discord_bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - DATABASE_PATH=/app/data/bot_database.sqlite3
+    volumes:
+      - bot_data:/app/data
+
+volumes:
+  bot_data:
+    driver: local
