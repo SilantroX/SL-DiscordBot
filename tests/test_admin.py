@@ -176,6 +176,56 @@ class TestAdminModule(unittest.IsolatedAsyncioTestCase):
         self.assertIn("KICK", action_types)
         self.assertIn("BAN", action_types)
 
+    async def test_05_clear_command_newest_first(self) -> None:
+        """Prueba que /clear purgue de más reciente a más antiguo (oldest_first=False)."""
+        interaction = self._create_interaction()
+        mock_channel = MagicMock(spec=discord.TextChannel)
+        mock_channel.id = 66666
+        mock_channel.mention = "<#66666>"
+        mock_channel.purge = AsyncMock(return_value=[MagicMock(), MagicMock()])
+        interaction.channel = mock_channel
+
+        await self.cog.clear_command.callback(self.cog, interaction, cantidad=20, miembro=None)
+
+        mock_channel.purge.assert_called_once()
+        _, kwargs = mock_channel.purge.call_args
+        self.assertEqual(kwargs.get("limit"), 20)
+        self.assertFalse(kwargs.get("oldest_first"), "oldest_first debe ser False para borrar de reciente a antiguo")
+
+    async def test_06_audit_channel_and_role_listeners(self) -> None:
+        """Prueba que los listeners de auditoría capturen creación de canales y cambios de rol."""
+        self.cog.send_mod_log = AsyncMock()
+
+        # 1. Creación de canal
+        mock_ch = MagicMock(spec=discord.TextChannel)
+        mock_ch.name = "anuncios-staff"
+        mock_ch.id = 99901
+        mock_ch.type = discord.ChannelType.text
+        mock_ch.category = None
+        mock_ch.guild = self.mock_guild
+
+        await self.cog.on_guild_channel_create(mock_ch)
+        self.cog.send_mod_log.assert_called_once()
+
+        # 2. Modificación de rol con permiso peligroso (Administrator)
+        self.cog.send_mod_log.reset_mock()
+        role_before = MagicMock(spec=discord.Role)
+        role_before.name = "Moderador"
+        role_before.permissions = discord.Permissions(moderate_members=True)
+
+        role_after = MagicMock(spec=discord.Role)
+        role_after.name = "Moderador"
+        role_after.mention = "<@&555>"
+        role_after.guild = self.mock_guild
+        role_after.permissions = discord.Permissions(administrator=True, moderate_members=True)
+
+        await self.cog.on_guild_role_update(role_before, role_after)
+        self.cog.send_mod_log.assert_called_once()
+        _, kwargs = self.cog.send_mod_log.call_args
+        embed = self.cog.send_mod_log.call_args[0][1]
+        self.assertIn("ALERTA", embed.title or "")
+
 
 if __name__ == "__main__":
     unittest.main()
+

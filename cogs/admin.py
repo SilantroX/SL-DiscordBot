@@ -594,11 +594,20 @@ class AdminCog(commands.Cog, name="Administración"):
         # Discord no permite purgar mensajes con más de 14 días de antigüedad vía API bulk_delete
         limit_date = datetime.now(timezone.utc) - timedelta(days=14)
 
+        def check_filter(msg: discord.Message) -> bool:
+            # Omitir mensajes con más de 14 días para evitar fallo en bulk_delete
+            if msg.created_at <= limit_date:
+                return False
+            if miembro is not None:
+                return msg.author.id == miembro.id
+            return True
+
         try:
+            # oldest_first=False garantiza que la eliminación comience desde el mensaje más reciente hacia el más antiguo
             deleted = await channel.purge(
                 limit=cantidad,
                 check=check_filter,
-                after=limit_date,
+                oldest_first=False,
             )
         except discord.Forbidden:
             await interaction.followup.send(
@@ -611,7 +620,7 @@ class AdminCog(commands.Cog, name="Administración"):
         filtro_str = f" de {miembro.mention}" if miembro else ""
         embed = EmbedBuilder.success(
             title="Mensajes Eliminados",
-            description=f"Se eliminaron `{total_borrados}` mensaje(s){filtro_str} en este canal.",
+            description=f"Se eliminaron `{total_borrados}` mensaje(s){filtro_str} (del más reciente al más antiguo).",
         )
         await interaction.followup.send(embed=embed, ephemeral=True)
 
@@ -627,7 +636,275 @@ class AdminCog(commands.Cog, name="Administración"):
         )
         await self.send_mod_log(guild, log_embed)
 
+    # ==========================================================================
+    # AUDITORÍA DE ACCIONES RIESGOSAS EN EL SERVIDOR (LISTENERS DE EVENTOS)
+    # ==========================================================================
+
+    async def _get_audit_executor(
+        self,
+        guild: discord.Guild,
+        action: discord.AuditLogAction,
+        target_id: Optional[int] = None,
+    ) -> Optional[discord.User]:
+        """Consulta los Audit Logs de Discord para identificar al moderador que ejecutó la acción."""
+        if not guild.me.guild_permissions.view_audit_log:
+            return None
+
+        try:
+            async for entry in guild.audit_logs(limit=4, action=action):
+                # Comprobar si la acción ocurrió en los últimos 20 segundos
+                delta_sec = (datetime.now(timezone.utc) - entry.created_at).total_seconds()
+                if delta_sec <= 20:
+                    if target_id is None or (entry.target and getattr(entry.target, "id", None) == target_id):
+                        return entry.user
+        except (discord.Forbidden, discord.HTTPException):
+            pass
+        return None
+
+    # --- 1. AUDITORÍA DE CANALES ---
+
+    @commands.Cog.listener()
+    async def on_guild_channel_create(self, channel: discord.abc.GuildChannel) -> None:
+        """Audita la creación de canales en el servidor."""
+        guild = channel.guild
+        executor = await self._get_audit_executor(guild, discord.AuditLogAction.channel_create, channel.id)
+        mod_str = executor.mention if executor else "Desconocido / No disponible"
+
+        log_embed = EmbedBuilder.warning(
+            title="📁 Canal Creado",
+            description=(
+                f"• **Canal:** {channel.name} (`{channel.id}`)\n"
+                f"• **Tipo:** `{channel.type}`\n"
+                f"• **Categoría:** {channel.category.name if channel.category else 'Ninguna'}\n"
+                f"• **Responsable:** {mod_str}"
+            ),
+        )
+        await self.send_mod_log(guild, log_embed)
+
+    @commands.Cog.listener()
+    async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel) -> None:
+        """Audita la eliminación de canales en el servidor."""
+        guild = channel.guild
+        executor = await self._get_audit_executor(guild, discord.AuditLogAction.channel_delete, channel.id)
+        mod_str = executor.mention if executor else "Desconocido / No disponible"
+
+        log_embed = EmbedBuilder.error(
+            title="🗑️ Canal Eliminado",
+            description=(
+                f"• **Canal:** `#{channel.name}` (`{channel.id}`)\n"
+                f"• **Tipo:** `{channel.type}`\n"
+                f"• **Categoría:** {channel.category.name if channel.category else 'Ninguna'}\n"
+                f"• **Responsable:** {mod_str}"
+            ),
+        )
+        await self.send_mod_log(guild, log_embed)
+
+    @commands.Cog.listener()
+    async def on_guild_channel_update(
+        self,
+        before: discord.abc.GuildChannel,
+        after: discord.abc.GuildChannel,
+    ) -> None:
+        """Audita cambios críticos en canales (nombre o permisos/overwrites)."""
+        guild = after.guild
+        cambios = []
+
+        if before.name != after.name:
+            cambios.append(f"• **Nombre:** `{before.name}` ➔ `{after.name}`")
+
+        # Comprobar cambios en permisos (Permission Overwrites)
+        if before.overwrites != after.overwrites:
+            cambios.append("• **Permisos:** Se modificaron los permisos o roles asignados a este canal.")
+
+        if not cambios:
+            return
+
+        executor = await self._get_audit_executor(guild, discord.AuditLogAction.channel_update, after.id)
+        mod_str = executor.mention if executor else "Desconocido / No disponible"
+
+        log_embed = EmbedBuilder.warning(
+            title="⚠️ Canal Modificado",
+            description=(
+                f"• **Canal:** {after.name} (`{after.id}`)\n"
+                f"• **Responsable:** {mod_str}\n"
+                f"**Detalles del cambio:**\n" + "\n".join(cambios)
+            ),
+        )
+        await self.send_mod_log(guild, log_embed)
+
+    # --- 2. AUDITORÍA DE ROLES ---
+
+    @commands.Cog.listener()
+    async def on_guild_role_create(self, role: discord.Role) -> None:
+        """Audita la creación de un nuevo rol."""
+        guild = role.guild
+        executor = await self._get_audit_executor(guild, discord.AuditLogAction.role_create, role.id)
+        mod_str = executor.mention if executor else "Desconocido / No disponible"
+
+        log_embed = EmbedBuilder.warning(
+            title="🎭 Rol Creado",
+            description=(
+                f"• **Rol:** {role.mention} (`{role.name}`)\n"
+                f"• **ID:** `{role.id}`\n"
+                f"• **Color:** `{role.color}`\n"
+                f"• **Responsable:** {mod_str}"
+            ),
+        )
+        await self.send_mod_log(guild, log_embed)
+
+    @commands.Cog.listener()
+    async def on_guild_role_delete(self, role: discord.Role) -> None:
+        """Audita la eliminación de un rol."""
+        guild = role.guild
+        executor = await self._get_audit_executor(guild, discord.AuditLogAction.role_delete, role.id)
+        mod_str = executor.mention if executor else "Desconocido / No disponible"
+
+        log_embed = EmbedBuilder.error(
+            title="🗑️ Rol Eliminado",
+            description=(
+                f"• **Rol:** `{role.name}` (`{role.id}`)\n"
+                f"• **Responsable:** {mod_str}"
+            ),
+        )
+        await self.send_mod_log(guild, log_embed)
+
+    @commands.Cog.listener()
+    async def on_guild_role_update(self, before: discord.Role, after: discord.Role) -> None:
+        """Audita modificaciones críticas de permisos en roles (alerta de seguridad si otorga permisos peligrosos)."""
+        guild = after.guild
+        cambios = []
+        es_riesgo_critico = False
+
+        if before.name != after.name:
+            cambios.append(f"• **Nombre:** `{before.name}` ➔ `{after.name}`")
+
+        # Lista de permisos de alto riesgo
+        critical_perms = [
+            ("administrator", "👑 Administrador"),
+            ("manage_guild", "⚙️ Gestionar Servidor"),
+            ("manage_roles", "🎭 Gestionar Roles"),
+            ("manage_channels", "📁 Gestionar Canales"),
+            ("ban_members", "🔨 Banear Miembros"),
+            ("kick_members", "🚪 Expulsar Miembros"),
+            ("mention_everyone", "📢 Mencionar @everyone"),
+        ]
+
+        for perm_attr, perm_name in critical_perms:
+            before_val = getattr(before.permissions, perm_attr)
+            after_val = getattr(after.permissions, perm_attr)
+            if not before_val and after_val:
+                cambios.append(f"• 🔴 **Permiso Otorgado:** `{perm_name}`")
+                es_riesgo_critico = True
+            elif before_val and not after_val:
+                cambios.append(f"• 🟢 **Permiso Revocado:** `{perm_name}`")
+
+        if not cambios:
+            return
+
+        executor = await self._get_audit_executor(guild, discord.AuditLogAction.role_update, after.id)
+        mod_str = executor.mention if executor else "Desconocido / No disponible"
+
+        titulo = "🚨 ALERTA: Permisos Peligrosos Otorgados a Rol" if es_riesgo_critico else "🎭 Rol Modificado"
+        color = EmbedColors.ERROR if es_riesgo_critico else EmbedColors.WARNING
+
+        log_embed = EmbedBuilder.base(
+            title=titulo,
+            description=(
+                f"• **Rol:** {after.mention} (`{after.name}`)\n"
+                f"• **Responsable:** {mod_str}\n"
+                f"**Cambios detectados:**\n" + "\n".join(cambios)
+            ),
+            color=color,
+        )
+        await self.send_mod_log(guild, log_embed)
+
+    # --- 3. AUDITORÍA DE MIEMBROS (ROLES Y SANCIONES EXTERNAS) ---
+
+    @commands.Cog.listener()
+    async def on_member_update(self, before: discord.Member, after: discord.Member) -> None:
+        """Audita cuando a un miembro se le asignan o remueven roles."""
+        guild = after.guild
+        if before.roles == after.roles:
+            return
+
+        added_roles = [r for r in after.roles if r not in before.roles]
+        removed_roles = [r for r in before.roles if r not in after.roles]
+
+        if not added_roles and not removed_roles:
+            return
+
+        executor = await self._get_audit_executor(guild, discord.AuditLogAction.member_role_update, after.id)
+        mod_str = executor.mention if executor else "Desconocido / No disponible"
+
+        desc_lines = [
+            f"• **Miembro:** {after.mention} (`{after.name}`)",
+            f"• **Responsable:** {mod_str}",
+        ]
+
+        es_peligroso = False
+        if added_roles:
+            roles_str = ", ".join(r.mention for r in added_roles)
+            desc_lines.append(f"• ➕ **Roles Añadidos:** {roles_str}")
+            # Alerta si se otorgó un rol con administrador
+            if any(r.permissions.administrator for r in added_roles):
+                es_peligroso = True
+                desc_lines.append("⚠️ **¡Atención!** Se ha otorgado un rol con permisos de **ADMINISTRADOR**.")
+
+        if removed_roles:
+            roles_str = ", ".join(r.mention for r in removed_roles)
+            desc_lines.append(f"• ➖ **Roles Removidos:** {roles_str}")
+
+        titulo = "🚨 Asignación de Rol Administrativo" if es_peligroso else "👥 Roles de Miembro Actualizados"
+        color = EmbedColors.ERROR if es_peligroso else EmbedColors.INFO
+
+        log_embed = EmbedBuilder.base(
+            title=titulo,
+            description="\n".join(desc_lines),
+            color=color,
+        )
+        log_embed.set_thumbnail(url=after.display_avatar.url)
+        await self.send_mod_log(guild, log_embed)
+
+    @commands.Cog.listener()
+    async def on_member_ban(self, guild: discord.Guild, user: discord.User | discord.Member) -> None:
+        """Audita baneos realizados directamente en Discord (externos o manuales)."""
+        executor = await self._get_audit_executor(guild, discord.AuditLogAction.ban, user.id)
+        # Si el ejecutor fue este mismo bot, ya se envió el log a través de /ban
+        if executor and executor.id == self.bot.user.id:
+            return
+
+        mod_str = executor.mention if executor else "Manual / Desconocido"
+        log_embed = EmbedBuilder.error(
+            title="🔨 Baneo Detectado (Discord Audit)",
+            description=(
+                f"• **Usuario:** {user.name} (`{user.id}`)\n"
+                f"• **Responsable:** {mod_str}\n"
+                f"• **Origen:** Sanción aplicada directamente desde Discord."
+            ),
+        )
+        log_embed.set_thumbnail(url=user.display_avatar.url)
+        await self.send_mod_log(guild, log_embed)
+
+    @commands.Cog.listener()
+    async def on_member_unban(self, guild: discord.Guild, user: discord.User) -> None:
+        """Audita desbaneos realizados directamente en Discord (externos o manuales)."""
+        executor = await self._get_audit_executor(guild, discord.AuditLogAction.unban, user.id)
+        if executor and executor.id == self.bot.user.id:
+            return
+
+        mod_str = executor.mention if executor else "Manual / Desconocido"
+        log_embed = EmbedBuilder.info(
+            title="🔓 Desbaneo Detectado (Discord Audit)",
+            description=(
+                f"• **Usuario:** {user.name} (`{user.id}`)\n"
+                f"• **Responsable:** {mod_str}\n"
+                f"• **Origen:** Revocación aplicada directamente desde Discord."
+            ),
+        )
+        await self.send_mod_log(guild, log_embed)
+
 
 async def setup(bot: commands.Bot) -> None:
     """Función de entrada para registrar el Cog de Administración."""
     await bot.add_cog(AdminCog(bot))
+
