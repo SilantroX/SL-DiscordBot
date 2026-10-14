@@ -342,7 +342,6 @@ const drawioViewerUrl = 'https://viewer.diagrams.net/?highlight=0000ff&edit=_bla
 // Write files to workspace
 const ws = 'c:/Users/silan/OneDrive/Documentos/Bot Discord';
 fs.writeFileSync(path.join(ws, 'bot_arquitectura_y_flujos.drawio'), drawioXml, 'utf-8');
-fs.writeFileSync(path.join(ws, 'bot_flujos.mmd'), mermaidContent, 'utf-8');
 fs.writeFileSync(path.join(ws, 'drawio_links.txt'), 
   '=== ENLACES OFICIALES DRAW.IO (SilantroLabs Discord Bot v1.2.0) ===\n\n' +
   '1. EDITOR WEB INTERACTIVO (Draw.io Online vía GitHub Direct):\n' + drawioEditorUrl + '\n\n' +

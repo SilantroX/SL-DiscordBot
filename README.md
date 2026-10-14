@@ -86,7 +86,6 @@
 * **Editor interactivo online:** [Abrir en app.diagrams.net](https://app.diagrams.net/?grid=1#Uhttps%3A%2F%2Fraw.githubusercontent.com%2FSilantroX%2FSL-DiscordBot%2Fmaster%2Fbot_arquitectura_y_flujos.drawio)
 * **Visualizador interactivo:** [Ver en viewer.diagrams.net](https://viewer.diagrams.net/?highlight=0000ff&edit=_blank&layers=1&nav=1&title=bot_arquitectura_y_flujos.drawio#Uhttps%3A%2F%2Fraw.githubusercontent.com%2FSilantroX%2FSL-DiscordBot%2Fmaster%2Fbot_arquitectura_y_flujos.drawio)
 * **Archivo local:** `bot_arquitectura_y_flujos.drawio` (se puede arrastrar a [app.diagrams.net](https://app.diagrams.net) o abrir en la extensión Draw.io de VS Code / Draw.io Desktop)
-* **Sintaxis Mermaid:** `bot_flujos.mmd`
 
 ---
 

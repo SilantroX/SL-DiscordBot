@@ -19,7 +19,7 @@ Este documento define la arquitectura técnica, esquema de base de datos, flujos
 | **Almacenamiento Persistente** | Railway Volume (`/app/data`) / Docker Volume | Garantiza persistencia total de la base de datos entre reinicios y redespliegues. |
 | **Configuración** | `python-dotenv` | Manejo seguro de credenciales (Token, IDs de servidor) fuera del código fuente. |
 | **Contenedores & Despliegue** | Dockerfile (`python:3.13-slim`), Docker Compose, Procfile | Agnóstico a la infraestructura, operable en local, VPS y nube. |
-| **Diagramación** | Draw.io & Mermaid | Arquitectura visual disponible online y en archivo local `.drawio`. |
+| **Diagramación** | Draw.io | Arquitectura visual disponible online y en archivo local `.drawio`. |
 
 ---
 
@@ -27,7 +27,6 @@ Este documento define la arquitectura técnica, esquema de base de datos, flujos
 * **Editor Web Interactivo:** [Abrir en app.diagrams.net](https://app.diagrams.net/?grid=1#Uhttps%3A%2F%2Fraw.githubusercontent.com%2FSilantroX%2FSL-DiscordBot%2Fmaster%2Fbot_arquitectura_y_flujos.drawio)
 * **Visualizador Interactivo:** [Ver en viewer.diagrams.net](https://viewer.diagrams.net/?highlight=0000ff&edit=_blank&layers=1&nav=1&title=bot_arquitectura_y_flujos.drawio#Uhttps%3A%2F%2Fraw.githubusercontent.com%2FSilantroX%2FSL-DiscordBot%2Fmaster%2Fbot_arquitectura_y_flujos.drawio)
 * **Archivo local:** `bot_arquitectura_y_flujos.drawio` (arrastrar a [app.diagrams.net](https://app.diagrams.net) o abrir con la extensión Draw.io de VS Code / Draw.io Desktop)
-* **Sintaxis Mermaid:** `bot_flujos.mmd`
 
 ---
 
@@ -48,7 +47,6 @@ Bot Discord/
 ├── main.py                       # Punto de entrada, inicio del bot y carga de cogs
 ├── config.py                     # Carga de variables de entorno y validaciones tipadas
 ├── bot_arquitectura_y_flujos.drawio # Diagrama nativo editable en Draw.io
-├── bot_flujos.mmd                # Diagrama en sintaxis Mermaid
 ├── generate_diagrams.js          # Generador de compresión y URLs de Draw.io
 ├── docker-compose.yml            # Orquestación con volumen Docker persistente
 ├── database/
