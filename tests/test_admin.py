@@ -26,10 +26,15 @@ from cogs.admin import AdminCog
 
 class MockRole:
     """Clase auxiliar para emular roles jerárquicos comparables."""
-    def __init__(self, name: str, position: int, id: int = 1):
+    def __init__(self, name: str, position: int, id: int = 1, managed: bool = False):
         self.name = name
         self.position = position
         self.id = id
+        self.managed = managed
+        self.mention = f"<@&{id}>"
+
+    def is_default(self) -> bool:
+        return False
 
     def __le__(self, other: MockRole) -> bool:
         return self.position <= other.position
@@ -224,6 +229,91 @@ class TestAdminModule(unittest.IsolatedAsyncioTestCase):
         _, kwargs = self.cog.send_mod_log.call_args
         embed = self.cog.send_mod_log.call_args[0][1]
         self.assertIn("ALERTA", embed.title or "")
+
+    # ==========================================================================
+    # 7. PRUEBAS DE ASIGNACIÓN Y REMOCIÓN MASIVA DE ROLES (/role_add_all /role_remove_all)
+    # ==========================================================================
+
+    async def test_07_role_add_all(self) -> None:
+        """Prueba la asignación masiva de un rol a todos los miembros elegibles."""
+        self.cog.send_mod_log = AsyncMock()
+
+        # Rol a asignar (posición 5, menor que el bot que tiene posición 20)
+        target_role = MockRole("Comunidad", position=5, id=555)
+
+        # Miembros del servidor
+        m1 = MagicMock(spec=discord.Member)
+        m1.id = 1001
+        m1.name = "Human1"
+        m1.bot = False
+        m1.roles = []
+        m1.add_roles = AsyncMock()
+
+        m2 = MagicMock(spec=discord.Member)
+        m2.id = 1002
+        m2.name = "Human2"
+        m2.bot = False
+        m2.roles = [target_role]  # Ya tiene el rol
+        m2.add_roles = AsyncMock()
+
+        m3_bot = MagicMock(spec=discord.Member)
+        m3_bot.id = 1003
+        m3_bot.name = "BotUser"
+        m3_bot.bot = True  # Es bot
+        m3_bot.roles = []
+        m3_bot.add_roles = AsyncMock()
+
+        self.mock_guild.members = [m1, m2, m3_bot]
+
+        # Caso A: Jerarquía insuficiente del bot (rol con posición 25 > bot posición 20)
+        high_role = MockRole("Rol Alto", position=25, id=777)
+        interaction_fail = self._create_interaction()
+        await self.cog.role_add_all_command.callback(self.cog, interaction_fail, high_role)
+        interaction_fail.response.send_message.assert_awaited_once()
+        self.assertIn("Jerarquía Insuficiente", interaction_fail.response.send_message.await_args.kwargs["embed"].title)
+
+        # Caso B: Asignación masiva exitosa ignorando bots
+        interaction_success = self._create_interaction()
+        await self.cog.role_add_all_command.callback(self.cog, interaction_success, target_role, ignorar_bots=True)
+
+        # Solo m1 debe haber recibido el rol (m2 ya lo tenía, m3 es bot)
+        m1.add_roles.assert_awaited_once_with(target_role, reason=f"Asignación masiva por {self.moderator.name}")
+        m2.add_roles.assert_not_awaited()
+        m3_bot.add_roles.assert_not_awaited()
+
+        interaction_success.followup.send.assert_awaited_once()
+        call_kw = interaction_success.followup.send.await_args.kwargs
+        self.assertIn("Completada", call_kw["embed"].title)
+        self.cog.send_mod_log.assert_awaited_once()
+
+    async def test_08_role_remove_all(self) -> None:
+        """Prueba la remoción masiva de un rol de todos los miembros del servidor."""
+        self.cog.send_mod_log = AsyncMock()
+        target_role = MockRole("VIP Expirado", position=5, id=555)
+
+        m1 = MagicMock(spec=discord.Member)
+        m1.id = 2001
+        m1.name = "UserWithRole"
+        m1.bot = False
+        m1.roles = [target_role]
+        m1.remove_roles = AsyncMock()
+
+        m2 = MagicMock(spec=discord.Member)
+        m2.id = 2002
+        m2.name = "UserWithoutRole"
+        m2.bot = False
+        m2.roles = []
+        m2.remove_roles = AsyncMock()
+
+        self.mock_guild.members = [m1, m2]
+
+        interaction = self._create_interaction()
+        await self.cog.role_remove_all_command.callback(self.cog, interaction, target_role, ignorar_bots=True)
+
+        m1.remove_roles.assert_awaited_once_with(target_role, reason=f"Remoción masiva por {self.moderator.name}")
+        m2.remove_roles.assert_not_awaited()
+        interaction.followup.send.assert_awaited_once()
+        self.cog.send_mod_log.assert_awaited_once()
 
 
 if __name__ == "__main__":

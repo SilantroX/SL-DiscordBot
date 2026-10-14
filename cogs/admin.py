@@ -11,11 +11,15 @@ Proporciona comandos Slash completos para la gestión y moderación de miembros:
 - /warn: Aplica y registra una advertencia en la base de datos
 - /warnings: Consulta el historial de sanciones e infracciones de un usuario
 - /clear: Elimina mensajes masivamente en el canal actual (con filtro opcional)
+- /role_add_all: Asigna un rol masivamente a todos los miembros del servidor
+- /role_remove_all: Remueve un rol masivamente de todos los miembros del servidor
 """
 
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timedelta, timezone
+import logging
 from typing import Optional
 
 import discord
@@ -25,6 +29,8 @@ from discord.ext import commands
 import database.queries as queries
 from utils.checks import can_moderate_member, is_staff_or_admin
 from utils.embeds import EmbedBuilder, EmbedColors
+
+logger = logging.getLogger("bot.admin")
 
 
 class AdminCog(commands.Cog, name="Administración"):
@@ -633,6 +639,260 @@ class AdminCog(commands.Cog, name="Administración"):
                 f"• **Cantidad eliminada:** `{total_borrados}` mensajes\n"
                 f"• **Filtro de usuario:** {miembro.mention if miembro else 'Ninguno (todos)'}"
             ),
+        )
+        await self.send_mod_log(guild, log_embed)
+
+    # ==========================================================================
+    # 10. COMANDO /role_add_all (Asignación masiva de rol)
+    # ==========================================================================
+
+    @app_commands.command(
+        name="role_add_all",
+        description="Asigna un rol masivamente a todos los miembros del servidor.",
+    )
+    @app_commands.describe(
+        rol="El rol que se otorgará a todos los miembros.",
+        ignorar_bots="Si es verdadero, no se asignará el rol a las cuentas de bots (por defecto: Sí).",
+    )
+    @app_commands.checks.has_permissions(administrator=True, manage_roles=True)
+    async def role_add_all_command(
+        self,
+        interaction: discord.Interaction,
+        rol: discord.Role,
+        ignorar_bots: Optional[bool] = True,
+    ) -> None:
+        """Asigna un rol de forma iterativa y segura a todos los miembros del servidor."""
+        guild = interaction.guild
+        moderator = interaction.user
+
+        if not guild or not isinstance(moderator, discord.Member):
+            return
+
+        # 1. Validaciones previas de seguridad y jerarquía
+        if rol.is_default():
+            await interaction.response.send_message(
+                embed=EmbedBuilder.error("Rol Inválido", "No es posible asignar el rol por defecto `@everyone`."),
+                ephemeral=True,
+            )
+            return
+
+        if rol.managed:
+            await interaction.response.send_message(
+                embed=EmbedBuilder.error("Rol Gestionado", "No puedes asignar roles administrados por bots o integraciones."),
+                ephemeral=True,
+            )
+            return
+
+        # Jerarquía del bot
+        if guild.me.top_role <= rol:
+            await interaction.response.send_message(
+                embed=EmbedBuilder.error(
+                    "Jerarquía Insuficiente del Bot",
+                    f"Mi rol más alto ({guild.me.top_role.name}) no tiene suficiente jerarquía sobre {rol.mention}. "
+                    "Coloca el rol del bot por encima de este rol en los ajustes del servidor.",
+                ),
+                ephemeral=True,
+            )
+            return
+
+        # Jerarquía del moderador (a menos que sea el dueño del servidor)
+        if guild.owner_id != moderator.id and moderator.top_role <= rol:
+            await interaction.response.send_message(
+                embed=EmbedBuilder.error(
+                    "Jerarquía Insuficiente",
+                    f"Tu rol más alto ({moderator.top_role.name}) no tiene suficiente jerarquía para gestionar {rol.mention}.",
+                ),
+                ephemeral=True,
+            )
+            return
+
+        # 2. Aplazar la respuesta ya que la asignación masiva puede tomar tiempo
+        await interaction.response.defer(ephemeral=False)
+
+        # 3. Filtrar miembros elegibles que aún no tienen el rol
+        members_list = guild.members
+        targets = [
+            m for m in members_list
+            if rol not in m.roles and (not m.bot if ignorar_bots else True)
+        ]
+
+        if not targets:
+            await interaction.followup.send(
+                embed=EmbedBuilder.info(
+                    "Operación Innecesaria",
+                    f"Todos los miembros elegibles ({'humanos' if ignorar_bots else 'usuarios'}) ya poseen el rol {rol.mention}.",
+                )
+            )
+            return
+
+        # Mensaje de progreso inicial si hay varios miembros
+        progress_msg = None
+        if len(targets) > 10:
+            progress_msg = await interaction.followup.send(
+                embed=EmbedBuilder.info(
+                    "⏳ Asignación Masiva en Progreso",
+                    f"Iniciando asignación del rol {rol.mention} a `{len(targets)}` miembros. Por favor espera...",
+                )
+            )
+
+        # 4. Proceso de asignación con manejo de rate-limits
+        exitos = 0
+        fallidos = 0
+
+        for i, member in enumerate(targets, start=1):
+            try:
+                await member.add_roles(rol, reason=f"Asignación masiva por {moderator.name}")
+                exitos += 1
+            except discord.HTTPException as exc:
+                logger.warning("Fallo al asignar rol masivo %s a %s: %s", rol.name, member.name, exc)
+                fallidos += 1
+
+            # Pausa breve anti-ratelimit cada 5 miembros si la lista es grande
+            if len(targets) > 5 and i % 5 == 0:
+                await asyncio.sleep(0.5)
+
+        # 5. Embed de resultado final
+        resultado_embed = EmbedBuilder.success(
+            "Asignación Masiva Completada",
+            (
+                f"El rol {rol.mention} ha sido procesado para todos los miembros del servidor.\n\n"
+                f"• **Asignados con éxito:** `{exitos}` miembros\n"
+                f"• **Ya lo poseían:** `{len(members_list) - len(targets)}` miembros\n"
+                f"• **Fallidos / Errores:** `{fallidos}`\n"
+                f"• **Filtro de bots:** {'Ignorados' if ignorar_bots else 'Incluidos'}\n"
+                f"• **Ejecutado por:** {moderator.mention}"
+            ),
+        )
+
+        if progress_msg:
+            await progress_msg.edit(embed=resultado_embed)
+        else:
+            await interaction.followup.send(embed=resultado_embed)
+
+        # 6. Registro en #mod-logs
+        log_embed = EmbedBuilder.base(
+            title="👥 Asignación Masiva de Rol",
+            description=(
+                f"• **Rol asignado:** {rol.mention} (`{rol.id}`)\n"
+                f"• **Moderador:** {moderator.mention} (`{moderator.id}`)\n"
+                f"• **Total miembros beneficiados:** `{exitos}`\n"
+                f"• **Bots omitidos:** {'Sí' if ignorar_bots else 'No'}"
+            ),
+            color=EmbedColors.SUCCESS,
+        )
+        await self.send_mod_log(guild, log_embed)
+
+    # ==========================================================================
+    # 11. COMANDO /role_remove_all (Remoción masiva de rol)
+    # ==========================================================================
+
+    @app_commands.command(
+        name="role_remove_all",
+        description="Remueve un rol masivamente de todos los miembros del servidor.",
+    )
+    @app_commands.describe(
+        rol="El rol que se removerá de todos los miembros.",
+        ignorar_bots="Si es verdadero, no se removerá el rol de cuentas de bots (por defecto: Sí).",
+    )
+    @app_commands.checks.has_permissions(administrator=True, manage_roles=True)
+    async def role_remove_all_command(
+        self,
+        interaction: discord.Interaction,
+        rol: discord.Role,
+        ignorar_bots: Optional[bool] = True,
+    ) -> None:
+        """Remueve un rol de forma iterativa y segura de todos los miembros del servidor."""
+        guild = interaction.guild
+        moderator = interaction.user
+
+        if not guild or not isinstance(moderator, discord.Member):
+            return
+
+        if rol.is_default():
+            await interaction.response.send_message(
+                embed=EmbedBuilder.error("Rol Inválido", "No es posible remover el rol `@everyone`."),
+                ephemeral=True,
+            )
+            return
+
+        if rol.managed:
+            await interaction.response.send_message(
+                embed=EmbedBuilder.error("Rol Gestionado", "No puedes remover roles administrados por bots o integraciones."),
+                ephemeral=True,
+            )
+            return
+
+        if guild.me.top_role <= rol:
+            await interaction.response.send_message(
+                embed=EmbedBuilder.error(
+                    "Jerarquía Insuficiente del Bot",
+                    f"Mi rol más alto ({guild.me.top_role.name}) no tiene suficiente jerarquía sobre {rol.mention}.",
+                ),
+                ephemeral=True,
+            )
+            return
+
+        if guild.owner_id != moderator.id and moderator.top_role <= rol:
+            await interaction.response.send_message(
+                embed=EmbedBuilder.error(
+                    "Jerarquía Insuficiente",
+                    f"Tu rol más alto ({moderator.top_role.name}) no tiene suficiente jerarquía para gestionar {rol.mention}.",
+                ),
+                ephemeral=True,
+            )
+            return
+
+        await interaction.response.defer(ephemeral=False)
+
+        members_list = guild.members
+        targets = [
+            m for m in members_list
+            if rol in m.roles and (not m.bot if ignorar_bots else True)
+        ]
+
+        if not targets:
+            await interaction.followup.send(
+                embed=EmbedBuilder.info(
+                    "Operación Innecesaria",
+                    f"Ningún miembro elegible posee actualmente el rol {rol.mention}.",
+                )
+            )
+            return
+
+        exitos = 0
+        fallidos = 0
+
+        for i, member in enumerate(targets, start=1):
+            try:
+                await member.remove_roles(rol, reason=f"Remoción masiva por {moderator.name}")
+                exitos += 1
+            except discord.HTTPException as exc:
+                logger.warning("Fallo al remover rol masivo %s de %s: %s", rol.name, member.name, exc)
+                fallidos += 1
+
+            if len(targets) > 5 and i % 5 == 0:
+                await asyncio.sleep(0.5)
+
+        resultado_embed = EmbedBuilder.success(
+            "Remoción Masiva Completada",
+            (
+                f"El rol {rol.mention} ha sido retirado masivamente.\n\n"
+                f"• **Roles retirados con éxito:** `{exitos}` miembros\n"
+                f"• **Fallidos / Errores:** `{fallidos}`\n"
+                f"• **Filtro de bots:** {'Ignorados' if ignorar_bots else 'Incluidos'}\n"
+                f"• **Ejecutado por:** {moderator.mention}"
+            ),
+        )
+        await interaction.followup.send(embed=resultado_embed)
+
+        log_embed = EmbedBuilder.base(
+            title="👥 Remoción Masiva de Rol",
+            description=(
+                f"• **Rol removido:** {rol.mention} (`{rol.id}`)\n"
+                f"• **Moderador:** {moderator.mention} (`{moderator.id}`)\n"
+                f"• **Total miembros afectados:** `{exitos}`"
+            ),
+            color=EmbedColors.WARNING,
         )
         await self.send_mod_log(guild, log_embed)
 

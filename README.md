@@ -13,7 +13,7 @@
 ## 🌟 Módulos Principales del Bot
 
 1. **🛡️ Administración y Moderación:**
-   * Comandos slash para moderación: `/kick`, `/ban`, `/unban`, `/timeout` (aislamiento nativo), `/warn`, `/warnings` y purga masiva de mensajes `/clear`.
+   * Comandos slash para moderación: `/kick`, `/ban`, `/unban`, `/timeout` (aislamiento nativo), `/warn`, `/warnings`, purga de mensajes `/clear`, y gestión masiva de roles (`/role_add_all`, `/role_remove_all`).
    * Verificación obligatoria de jerarquía de roles para evitar que moderadores sancionen a usuarios con roles iguales o superiores.
    * Registro automático y detallado de cada acción en un canal de auditoría `#mod-logs`.
 
@@ -161,6 +161,21 @@ Al iniciar por primera vez:
 ---
 
 ## 📌 Versiones y Registro de Cambios (Changelog)
+
+* **v1.1.0**: **Gestión Masiva de Roles en Administración**.
+  - Comando `/role_add_all <rol> [ignorar_bots]`: Asigna un rol de forma iterativa y segura a todos los miembros del servidor.
+  - Comando `/role_remove_all <rol> [ignorar_bots]`: Remueve un rol masivamente de todos los miembros del servidor.
+  - Validación estricta de jerarquía (`guild.me.top_role > rol` y `moderator.top_role > rol`), protección para `@everyone` y roles administrados.
+  - Prevención de rate-limits de Discord mediante pausas asíncronas automáticas y aplazamiento de interacción (`defer`).
+  - Filtro opcional para omitir cuentas de bots (`ignorar_bots=True` por defecto).
+  - Registro de auditoría detallado en `#mod-logs` con conteo de éxitos, omisiones y fallos.
+  - Cobertura completa de pruebas unitarias (`tests/test_admin.py`).
+
+* **v1.0.0**: **Lanzamiento Oficial & Branding SilantroLabs**.
+  - Personalización completa de identidad visual corporativa para SilantroLabs.
+  - Presencia motivadora en Discord: `SilantroLabs • Innovando el futuro 🚀 (/help)`.
+  - Estandarización de footers en todos los Embeds: `SilantroLabs • Discord Bot`.
+  - Transcripciones HTML oficiales con firma de SilantroLabs.
 
 * **v0.5.0**: **Módulo 5 - Anuncios con Replicación desde Canal Privado**.
   - Comando `/setup_anuncios <canal>`: Configuración del canal oficial global para difusión de comunicados.
