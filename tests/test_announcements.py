@@ -234,6 +234,66 @@ class TestAnnouncementsModule(unittest.IsolatedAsyncioTestCase):
         call_kw = interaction.response.send_message.await_args.kwargs
         self.assertEqual(len(call_kw["embed"].fields), 2)
 
+    async def test_anuncio_canal_command_opens_modal(self) -> None:
+        """Prueba que /anuncio_canal valide permisos y abra el modal con el canal destino."""
+        rules_channel = MagicMock(spec=discord.TextChannel)
+        rules_channel.id = 7003
+        rules_channel.name = "reglas"
+        rules_channel.mention = "<#7003>"
+        rules_channel.permissions_for.return_value = discord.Permissions(send_messages=True, embed_links=True)
+
+        interaction = MagicMock(spec=discord.Interaction)
+        interaction.guild = self.mock_guild
+        interaction.user = self.mock_staff
+        interaction.response = MagicMock()
+        interaction.response.send_modal = AsyncMock()
+
+        await self.cog.anuncio_canal_command.callback(self.cog, interaction, canal=rules_channel)
+
+        interaction.response.send_modal.assert_awaited_once()
+        sent_modal = interaction.response.send_modal.await_args.args[0]
+        self.assertIsInstance(sent_modal, AnnouncementModal)
+        self.assertEqual(sent_modal.target_channel, rules_channel)
+
+    async def test_anuncio_canal_confirm_publishes_to_specific_channel(self) -> None:
+        """Comprueba que la confirmación de AnnouncementPreviewView con target_channel publique en ese canal."""
+        rules_channel = MagicMock(spec=discord.TextChannel)
+        rules_channel.id = 7003
+        rules_channel.name = "reglas"
+        rules_channel.mention = "<#7003>"
+        mock_msg = MagicMock(spec=discord.Message)
+        mock_msg.id = 555666
+        mock_msg.jump_url = "https://discord.com/channels/1/7003/555666"
+        rules_channel.send = AsyncMock(return_value=mock_msg)
+
+        preview_view = AnnouncementPreviewView(
+            bot=self.mock_bot,
+            title="Normas Oficiales del Servidor",
+            content="1. Respeto mutuo.\n2. No spam.",
+            banner_url=None,
+            mention_type="none",
+            author_id=self.mock_staff.id,
+            target_channel=rules_channel,
+        )
+
+        interaction = MagicMock(spec=discord.Interaction)
+        interaction.guild = self.mock_guild
+        interaction.user = self.mock_staff
+        interaction.response = MagicMock()
+        interaction.response.edit_message = AsyncMock()
+
+        publish_btn = preview_view.children[0]
+        await publish_btn.callback(interaction)
+
+        rules_channel.send.assert_awaited_once()
+        send_kwargs = rules_channel.send.await_args.kwargs
+        self.assertEqual(send_kwargs["embed"].title, "Normas Oficiales del Servidor")
+
+        # Verificación en BD
+        history = await queries.get_announcements_by_guild(self.mock_guild.id)
+        self.assertEqual(len(history), 1)
+        self.assertEqual(history[0]["target_channel_id"], 7003)
+
 
 if __name__ == "__main__":
     unittest.main()

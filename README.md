@@ -3,7 +3,7 @@
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![discord.py](https://img.shields.io/badge/discord.py-v2.4%2B-5865F2.svg)](https://github.com/Rapptz/discord.py)
 [![Database](https://img.shields.io/badge/database-SQLite%20(aiosqlite)-99AAB5.svg)](https://github.com/omnilib/aiosqlite)
-[![Version](https://img.shields.io/badge/version-1.0.0-green.svg)](#versiones)
+[![Version](https://img.shields.io/badge/version-1.2.0-green.svg)](#versiones)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE)
 
 **SilantroLabs Bot** es un bot de Discord profesional, modular, escalable y completamente tipado, diseñado con **Python 3.10+**, **discord.py v2** y una base de datos relacional asíncrona con **SQLite**.
@@ -34,11 +34,12 @@
    * Selección múltiple con emojis y descripciones.
    * Sincronización automática de roles con verificación de jerarquía.
 
-5. **📢 Anuncios desde Canal Privado:**
-   * Comando `/anuncio` ejecutado en el canal privado de administración.
-   * Modal de redacción para título, contenido en Markdown, menciones (`@everyone`, `@here` o ninguna) y banner opcional.
-   * **Vista previa de seguridad (Preview)** con botones `[🚀 Publicar]` y `[❌ Cancelar]` para evitar errores públicos.
-   * Replicación inmediata en el canal público `#anuncios`.
+5. **📢 Anuncios y Comunicados Oficiales:**
+   * Comando `/anuncio [mencion]`: Apertura de modal desde canal privado y difusión en el canal público configurado `#anuncios`.
+   * Comando `/anuncio_canal <canal> [mencion]` (o alias `/comunicado <canal> [mencion]`): Permite redactar y publicar comunicados oficiales, normas o mensajes institucionales en **cualquier canal específico** (ej. `#reglas`, `#bienvenida`, `#noticias`).
+   * Modal interactivo de redacción con soporte para Markdown enriquecido, menciones y banner visual.
+   * **Vista previa de seguridad (Preview)** con botones `[🚀 Publicar]` y `[❌ Cancelar]` antes de emitir públicamente.
+   * Auditoría de publicaciones en `#mod-logs` y consulta histórica con `/anuncios_historial`.
 
 ---
 
@@ -213,6 +214,14 @@ Si prefieres correr el bot directamente en tu máquina o en un VPS sin contenedo
 ---
 
 ## 📌 Versiones y Registro de Cambios (Changelog)
+
+* **v1.2.0**: **Anuncios Multicanal y Comunicados Institucionales**.
+  - Comando `/anuncio_canal <canal> [mencion]`: Permite a moderadores y staff publicar anuncios institucionales en cualquier canal específico (`#reglas`, `#bienvenida`, etc.).
+  - Comando `/comunicado <canal> [mencion]`: Alias complementario orientado a redacción y difusión de normativas y comunicados.
+  - Validación de permisos del bot en el canal especificado (`send_messages` y `embed_links`) para prevenir fallos antes de enviar el formulario modal.
+  - Vista previa interactiva adaptada mostrando el canal destino en el embed de borrador.
+  - Auditoría de publicaciones vinculadas al canal destino en SQLite y en `#mod-logs`.
+  - Cobertura completa de pruebas unitarias ampliada a 39 pruebas automáticas.
 
 * **v1.1.0**: **Gestión Masiva de Roles en Administración**.
   - Comando `/role_add_all <rol> [ignorar_bots]`: Asigna un rol de forma iterativa y segura a todos los miembros del servidor.

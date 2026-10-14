@@ -44,6 +44,7 @@ class AnnouncementPreviewView(discord.ui.View):
         banner_url: Optional[str],
         mention_type: str,
         author_id: int,
+        target_channel: Optional[discord.TextChannel] = None,
     ) -> None:
         super().__init__(timeout=300)
         self.bot = bot
@@ -52,6 +53,7 @@ class AnnouncementPreviewView(discord.ui.View):
         self.banner_url = banner_url
         self.mention_type = mention_type
         self.author_id = author_id
+        self.target_channel = target_channel
 
     async def _disable_all(self, interaction: discord.Interaction) -> None:
         """Desactiva todos los botones de la vista."""
@@ -67,7 +69,7 @@ class AnnouncementPreviewView(discord.ui.View):
 
     @discord.ui.button(label="Publicar Anuncio", style=discord.ButtonStyle.success, emoji="🚀")
     async def confirm_publish(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        """Publica el anuncio en el canal público global y notifica el resultado."""
+        """Publica el anuncio en el canal público y notifica el resultado."""
         guild = interaction.guild
         user = interaction.user
 
@@ -82,24 +84,26 @@ class AnnouncementPreviewView(discord.ui.View):
             )
             return
 
-        # 2. Consultar canal global de anuncios configurado
+        # 2. Consultar canal de destino (especificado o global configurado)
         settings = await queries.get_guild_settings(guild.id)
-        target_channel_id = settings.get("announcements_channel_id") if settings else None
+        if self.target_channel is not None:
+            target_channel = self.target_channel
+        else:
+            target_channel_id = settings.get("announcements_channel_id") if settings else None
+            if not target_channel_id:
+                await interaction.response.send_message(
+                    embed=EmbedBuilder.error(
+                        "Canal No Configurado",
+                        "No se ha configurado el canal público de anuncios. Un administrador debe usar `/setup_anuncios` o indicar un canal con `/anuncio_canal`.",
+                    ),
+                    ephemeral=True,
+                )
+                return
+            target_channel = guild.get_channel(target_channel_id)
 
-        if not target_channel_id:
-            await interaction.response.send_message(
-                embed=EmbedBuilder.error(
-                    "Canal No Configurado",
-                    "No se ha configurado el canal público de anuncios. Un administrador debe usar `/setup_anuncios`.",
-                ),
-                ephemeral=True,
-            )
-            return
-
-        target_channel = guild.get_channel(target_channel_id)
         if not isinstance(target_channel, discord.TextChannel):
             await interaction.response.send_message(
-                embed=EmbedBuilder.error("Canal Inválido", "El canal de anuncios configurado no existe o no es accesible."),
+                embed=EmbedBuilder.error("Canal Inválido", "El canal de destino no existe o no es accesible."),
                 ephemeral=True,
             )
             return
@@ -121,7 +125,7 @@ class AnnouncementPreviewView(discord.ui.View):
             mention_text = "@here"
 
         try:
-            # 5. Publicar en el canal público de anuncios
+            # 5. Publicar en el canal de destino
             published_msg = await target_channel.send(content=mention_text, embed=final_embed)
         except discord.HTTPException as exc:
             logger.error("Error al enviar anuncio a %s: %s", target_channel.name, exc)
@@ -148,14 +152,14 @@ class AnnouncementPreviewView(discord.ui.View):
             mod_logs_channel = guild.get_channel(mod_logs_channel_id)
             if isinstance(mod_logs_channel, discord.TextChannel):
                 audit_embed = EmbedBuilder.info(
-                    "📢 Anuncio Oficial Publicado",
+                    "📢 Anuncio / Comunicado Publicado",
                     (
                         f"• **Publicado por:** {user.mention} (`{user.id}`)\n"
                         f"• **Canal destino:** {target_channel.mention}\n"
                         f"• **Título:** {self.title}\n"
                         f"• **Mención:** `{self.mention_type}`\n"
                         f"• **ID de Registro:** `#{announcement_id}`\n\n"
-                        f"[Ir al Anuncio Publicado]({published_msg.jump_url})"
+                        f"[Ir al Mensaje Publicado]({published_msg.jump_url})"
                     ),
                 )
                 try:
@@ -166,9 +170,9 @@ class AnnouncementPreviewView(discord.ui.View):
         # 8. Desactivar botones y actualizar mensaje privado en el canal de staff
         await self._disable_all(interaction)
         success_embed = EmbedBuilder.success(
-            "Anuncio Publicado Exitosamente",
+            "Mensaje Publicado Exitosamente",
             (
-                f"El anuncio ha sido difundido correctamente en {target_channel.mention}.\n\n"
+                f"El contenido ha sido difundido correctamente en {target_channel.mention}.\n\n"
                 f"• **Título:** {self.title}\n"
                 f"• **Mención:** `{self.mention_type}`\n"
                 f"• **Registro BD:** `#{announcement_id}`\n\n"
@@ -227,10 +231,16 @@ class AnnouncementModal(discord.ui.Modal, title="📝 Redactar Anuncio Oficial")
         max_length=300,
     )
 
-    def __init__(self, bot: commands.Bot, mention_type: str = "none") -> None:
+    def __init__(
+        self,
+        bot: commands.Bot,
+        mention_type: str = "none",
+        target_channel: Optional[discord.TextChannel] = None,
+    ) -> None:
         super().__init__()
         self.bot = bot
         self.mention_type = mention_type
+        self.target_channel = target_channel
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
         """Genera la vista previa en el canal privado de staff con controles interactivos."""
@@ -266,10 +276,12 @@ class AnnouncementModal(discord.ui.Modal, title="📝 Redactar Anuncio Oficial")
             banner_url=image_url,
             mention_type=self.mention_type,
             author_id=user.id,
+            target_channel=self.target_channel,
         )
 
+        dest_desc = f"Destino: {self.target_channel.mention}" if self.target_channel else "Destino: Canal Oficial de Anuncios"
         content_warning = (
-            f"👁️ **Vista Previa de Anuncio** (Mención configurada: `{self.mention_type}`)\n"
+            f"👁️ **Vista Previa de Anuncio / Comunicado** ({dest_desc} | Mención configurada: `{self.mention_type}`)\n"
             f"*Verifica que el formato y contenido sean correctos antes de difundirlo públicamente.*"
         )
         await interaction.response.send_message(content=content_warning, embed=preview_embed, view=preview_view)
@@ -388,6 +400,103 @@ class AnnouncementsCog(commands.Cog, name="Anuncios"):
         # 3. Enviar formulario modal de redacción
         modal = AnnouncementModal(bot=self.bot, mention_type=mencion_value)
         await interaction.response.send_modal(modal)
+
+    # ==========================================================================
+    # COMANDO /anuncio_canal y /comunicado (Canal Específico)
+    # ==========================================================================
+
+    async def _handle_channel_announcement(
+        self,
+        interaction: discord.Interaction,
+        canal: discord.TextChannel,
+        mencion: Optional[app_commands.Choice[str]] = None,
+    ) -> None:
+        """Lógica común para redactar anuncios o comunicados dirigidos a un canal específico."""
+        guild = interaction.guild
+        member = interaction.user
+
+        if not guild or not isinstance(member, discord.Member):
+            return
+
+        # 1. Comprobar permisos de Staff o Administrador
+        settings = await queries.get_guild_settings(guild.id)
+        staff_role_id = settings.get("staff_role_id") if settings else None
+
+        if not is_staff_or_admin(member, staff_role_id=staff_role_id):
+            await interaction.response.send_message(
+                embed=EmbedBuilder.error(
+                    "Acceso Denegado",
+                    "No tienes permisos de Staff o Administrador para redactar anuncios o comunicados.",
+                ),
+                ephemeral=True,
+            )
+            return
+
+        # 2. Comprobar permisos del bot en el canal de destino
+        bot_perms = canal.permissions_for(guild.me)
+        if not (bot_perms.send_messages and bot_perms.embed_links):
+            await interaction.response.send_message(
+                embed=EmbedBuilder.error(
+                    "Permisos Insuficientes",
+                    f"El bot necesita permisos de `Enviar Mensajes` e `Insertar Enlaces` en {canal.mention}.",
+                ),
+                ephemeral=True,
+            )
+            return
+
+        mencion_value = mencion.value if mencion else "none"
+
+        # 3. Enviar formulario modal de redacción con destino específico
+        modal = AnnouncementModal(bot=self.bot, mention_type=mencion_value, target_channel=canal)
+        await interaction.response.send_modal(modal)
+
+    @app_commands.command(
+        name="anuncio_canal",
+        description="Publica un anuncio o comunicado institucional en un canal específico (ej: #reglas, #bienvenida).",
+    )
+    @app_commands.describe(
+        canal="Canal de texto de destino donde se publicará el mensaje.",
+        mencion="Mención opcional que acompañará el anuncio en el canal.",
+    )
+    @app_commands.choices(
+        mencion=[
+            app_commands.Choice(name="Ninguna (Sin ping)", value="none"),
+            app_commands.Choice(name="@here (Usuarios conectados)", value="@here"),
+            app_commands.Choice(name="@everyone (Todos los miembros)", value="@everyone"),
+        ]
+    )
+    async def anuncio_canal_command(
+        self,
+        interaction: discord.Interaction,
+        canal: discord.TextChannel,
+        mencion: Optional[app_commands.Choice[str]] = None,
+    ) -> None:
+        """Despliega el modal de redacción enfocado a un canal específico."""
+        await self._handle_channel_announcement(interaction, canal, mencion)
+
+    @app_commands.command(
+        name="comunicado",
+        description="Publica un comunicado o mensaje oficial en un canal específico (ej: #reglas, #bienvenida).",
+    )
+    @app_commands.describe(
+        canal="Canal de texto de destino donde se publicará el mensaje.",
+        mencion="Mención opcional que acompañará el comunicado en el canal.",
+    )
+    @app_commands.choices(
+        mencion=[
+            app_commands.Choice(name="Ninguna (Sin ping)", value="none"),
+            app_commands.Choice(name="@here (Usuarios conectados)", value="@here"),
+            app_commands.Choice(name="@everyone (Todos los miembros)", value="@everyone"),
+        ]
+    )
+    async def comunicado_command(
+        self,
+        interaction: discord.Interaction,
+        canal: discord.TextChannel,
+        mencion: Optional[app_commands.Choice[str]] = None,
+    ) -> None:
+        """Alias para publicar comunicados en cualquier canal específico."""
+        await self._handle_channel_announcement(interaction, canal, mencion)
 
     # ==========================================================================
     # COMANDO /anuncios_historial
