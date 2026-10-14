@@ -334,19 +334,26 @@ const drawioXml = `<?xml version="1.0" encoding="UTF-8"?>
   </diagram>
 </mxfile>`;
 
-// Also generate direct Draw.io URL for native XML using #R<base64>
-const compressedXml = compressData(drawioXml);
-const drawioXmlUrl = 'https://app.diagrams.net/?grid=1&pv=0#R' + encodeURIComponent(compressedXml);
+// Direct Draw.io URL using raw GitHub URL (#U) to avoid atob/base64 length and encoding errors
+const rawGithubUrl = 'https://raw.githubusercontent.com/SilantroX/SL-DiscordBot/master/bot_arquitectura_y_flujos.drawio';
+const drawioEditorUrl = 'https://app.diagrams.net/?grid=1#U' + encodeURIComponent(rawGithubUrl);
+const drawioViewerUrl = 'https://viewer.diagrams.net/?highlight=0000ff&edit=_blank&layers=1&nav=1&title=bot_arquitectura_y_flujos.drawio#U' + encodeURIComponent(rawGithubUrl);
 
 // Write files to workspace
 const ws = 'c:/Users/silan/OneDrive/Documentos/Bot Discord';
 fs.writeFileSync(path.join(ws, 'bot_arquitectura_y_flujos.drawio'), drawioXml, 'utf-8');
 fs.writeFileSync(path.join(ws, 'bot_flujos.mmd'), mermaidContent, 'utf-8');
 fs.writeFileSync(path.join(ws, 'drawio_links.txt'), 
-  'ENLACE DRAW.IO DIRECTO (Editor interactivo con el diagrama XML completo de los 5 módulos):\n' + drawioXmlUrl + 
-  '\n\nENLACE DRAW.IO ALTERNATIVO (Renderizado desde Mermaid):\n' + drawioMermaidUrl, 
+  '=== ENLACES OFICIALES DRAW.IO (SilantroLabs Discord Bot v1.2.0) ===\n\n' +
+  '1. EDITOR WEB INTERACTIVO (Draw.io Online vía GitHub Direct):\n' + drawioEditorUrl + '\n\n' +
+  '2. VISUALIZADOR INTERACTIVO (Viewer con zoom, navegación y botón editar):\n' + drawioViewerUrl + '\n\n' +
+  '3. ARCHIVO LOCAL (Sin conexión):\n' +
+  '   - Abrir app.diagrams.net -> "Open Existing Diagram" -> Seleccionar bot_arquitectura_y_flujos.drawio\n' +
+  '   - O abrir directamente en Draw.io Desktop / VS Code Draw.io extension.\n',
   'utf-8'
 );
 
 console.log('--- GENERACIÓN COMPLETADA CON ÉXITO ---');
-console.log('URL Draw.io (XML):', drawioXmlUrl);
+console.log('URL Draw.io Editor:', drawioEditorUrl);
+console.log('URL Draw.io Viewer:', drawioViewerUrl);
+
