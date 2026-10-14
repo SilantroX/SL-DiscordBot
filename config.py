@@ -57,7 +57,8 @@ class BotConfig:
 
         command_prefix = os.getenv("COMMAND_PREFIX", "!").strip() or "!"
         raw_db_path = os.getenv("DATABASE_PATH", "bot_database.sqlite3").strip()
-        database_path = BASE_DIR / raw_db_path
+        db_p = Path(raw_db_path)
+        database_path = db_p if db_p.is_absolute() else BASE_DIR / db_p
         environment = os.getenv("ENVIRONMENT", "development").strip().lower()
 
         return cls(
