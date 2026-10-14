@@ -160,9 +160,36 @@ Al iniciar por primera vez:
 
 ---
 
-## 📌 Versiones
+## 📌 Versiones y Registro de Cambios (Changelog)
 
-* **v0.0.0**: Inicialización del proyecto, arquitectura base, conexión asíncrona SQLite (`aiosqlite`), cargador dinámico de Cogs, utilidades de embeds y jerarquías, comando `/ping`, `/info` y `/help`, e integración con Draw.io y Git.
+* **v0.3.0**: **Módulo 3 - Sugerencias y Votaciones Comunitarias**.
+  - Comando `/setup_suggestions <canal>`: Asignación oficial del canal de sugerencias con validación de permisos.
+  - Comando `/sugerir <texto>`: Envío estructurado de sugerencias con embeds dinámicos y botones de votación.
+  - Vistas interactivas persistentes (`SuggestionVoteView`): Botones `[👍 A favor]` y `[👎 En contra]` que sobreviven a reinicios.
+  - Lógica anti-trampas: Prevención estricta de auto-voto (el autor no puede votar su propuesta) y soporte para retirar voto (toggle) o cambiar de sentido (switch).
+  - Tabla `suggestion_votes` en SQLite para persistencia y auditoría de votos individuales.
+  - Comando de Staff `/responder_sugerencia <id> <estado> [comentario]`: Aprobación, Rechazo o Desarrollo con desactivación de botones y actualización visual del embed.
+  - Notificaciones privadas por DM al autor cuando su sugerencia es resuelta.
+  - Comando de consulta `/ver_sugerencia <id>`.
+  - Cobertura completa de pruebas unitarias (`tests/test_suggestions.py`).
+
+* **v0.2.0**: **Módulo 2 - Tickets de Soporte**.
+  - Vistas persistentes (`TicketPanelPersistentView` y `TicketControlView`).
+  - Formularios emergentes (`TicketCreateModal`).
+  - Canales privados automáticos con permisos aislados (`ticket-usuario-id`).
+  - Motor de transcripciones HTML estilo Discord Dark Mode (`utils/transcript.py`).
+  - Controles: Reclamar atención, Cierre en 2 pasos, `/ticket_add` y `/ticket_remove`.
+
+* **v0.1.1**: **Mejoras de Seguridad y Moderación en Admin**.
+  - Corrección de orden cronológico en `/clear` (eliminación de más nuevo a más antiguo, filtrado de mensajes menores a 14 días).
+  - Monitor de eventos críticos de auditoría en tiempo real (`on_guild_channel_create`, `on_guild_channel_delete`, `on_guild_channel_update`, `on_guild_role_create`, `on_guild_role_delete`, `on_guild_role_update` con alerta roja ante permisos peligrosos como Administrador, `on_member_update` ante asignación de roles, `on_member_ban`, `on_member_unban`).
+
+* **v0.1.0**: **Módulo 1 - Administración y Moderación**.
+  - Comandos slash `/setup_admin`, `/warn`, `/warnings`, `/timeout`, `/untimeout`, `/kick`, `/ban`, `/unban`.
+  - Validación estricta de jerarquía de roles de Discord.
+  - Registro de sanciones e historial en SQLite.
+
+* **v0.0.0**: Inicialización del proyecto, arquitectura base, conexión asíncrona SQLite (`aiosqlite`), cargador dinámico de Cogs, utilidades de embeds y jerarquías, comandos `/ping`, `/info` y `/help`, integración con Draw.io y Git.
 
 ---
 

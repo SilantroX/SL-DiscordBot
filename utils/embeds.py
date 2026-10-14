@@ -22,6 +22,7 @@ class EmbedColors:
     INFO = discord.Color.from_rgb(59, 165, 92)          # Verde Azulado Info
     ROLES = discord.Color.from_rgb(235, 69, 158)        # Fucsia / Roles
     ANNOUNCEMENT = discord.Color.from_rgb(255, 165, 0)  # Naranja Anuncios
+    IN_PROGRESS = discord.Color.from_rgb(155, 89, 182)   # Morado / En Progreso
 
 
 class EmbedBuilder:
@@ -99,4 +100,60 @@ class EmbedBuilder:
             )
         if image_url:
             embed.set_image(url=image_url)
+        return embed
+
+    @staticmethod
+    def suggestion(
+        suggestion_id: int,
+        content: str,
+        author: Optional[discord.User | discord.Member] = None,
+        status: str = "PENDING",
+        upvotes: int = 0,
+        downvotes: int = 0,
+        staff_comment: Optional[str] = None,
+        reviewer: Optional[discord.User | discord.Member] = None,
+    ) -> discord.Embed:
+        """Embed enriquecido para el sistema de sugerencias comunitarias."""
+        status_upper = status.upper()
+        if status_upper == "APPROVED":
+            color = EmbedColors.SUCCESS
+            status_text = "✅ **Aprobada por el Staff**"
+        elif status_upper == "REJECTED":
+            color = EmbedColors.ERROR
+            status_text = "❌ **Rechazada por el Staff**"
+        elif status_upper == "IN_PROGRESS":
+            color = EmbedColors.IN_PROGRESS
+            status_text = "🔨 **En Progreso / En Desarrollo**"
+        else:
+            color = EmbedColors.PRIMARY
+            status_text = "⏳ **Pendiente de Revisión**"
+
+        embed = discord.Embed(
+            title=f"💡 Sugerencia #{suggestion_id}",
+            description=content,
+            color=color,
+            timestamp=datetime.now(timezone.utc),
+        )
+
+        if author:
+            avatar_url = author.display_avatar.url if author.display_avatar else None
+            embed.set_author(name=f"Sugerencia de {author.display_name}", icon_url=avatar_url)
+
+        embed.add_field(
+            name="📊 Votación de la Comunidad",
+            value=f"👍 A favor: **{upvotes}**  •  👎 En contra: **{downvotes}**  (Balance: **{upvotes - downvotes}**)",
+            inline=False,
+        )
+
+        embed.add_field(name="📌 Estado", value=status_text, inline=True)
+
+        if staff_comment:
+            rev_label = f" (por {reviewer.display_name})" if reviewer else ""
+            embed.add_field(
+                name=f"💬 Respuesta del Staff{rev_label}",
+                value=staff_comment,
+                inline=False,
+            )
+
+        embed.set_footer(text=f"ID: {suggestion_id} • Bot Discord")
         return embed

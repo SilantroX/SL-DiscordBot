@@ -73,6 +73,16 @@ CREATE TABLE IF NOT EXISTS suggestions (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 4.1 Tabla de votos individuales en sugerencias
+CREATE TABLE IF NOT EXISTS suggestion_votes (
+    suggestion_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    vote_type INTEGER NOT NULL, -- 1 para UP (+1), -1 para DOWN (-1)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (suggestion_id, user_id),
+    FOREIGN KEY (suggestion_id) REFERENCES suggestions (suggestion_id) ON DELETE CASCADE
+);
+
 -- 5. Tabla de paneles de autoroles
 CREATE TABLE IF NOT EXISTS role_menus (
     menu_id INTEGER PRIMARY KEY AUTOINCREMENT,

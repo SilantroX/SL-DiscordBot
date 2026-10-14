@@ -131,19 +131,95 @@ async def create_suggestion(guild_id: int, message_id: int, user_id: int, conten
     return cursor.lastrowid or 0
 
 
+async def get_suggestion(suggestion_id: int) -> Optional[Dict[str, Any]]:
+    """Obtiene una sugerencia a partir de su ID secuencial."""
+    query = "SELECT * FROM suggestions WHERE suggestion_id = ?;"
+    row = await db_manager.fetch_one(query, (suggestion_id,))
+    return dict(row) if row else None
+
+
+async def get_suggestion_by_message_id(message_id: int) -> Optional[Dict[str, Any]]:
+    """Obtiene una sugerencia a partir del ID de su mensaje en Discord."""
+    query = "SELECT * FROM suggestions WHERE message_id = ?;"
+    row = await db_manager.fetch_one(query, (message_id,))
+    return dict(row) if row else None
+
+
+async def record_suggestion_vote(
+    suggestion_id: int,
+    user_id: int,
+    vote_type: int,
+) -> tuple[int, int, str]:
+    """
+    Registra, actualiza o remueve el voto de un usuario en una sugerencia.
+    - Si el usuario vuelve a presionar el mismo botón: remueve su voto (toggle).
+    - Si el usuario presiona el botón opuesto: cambia su voto (switch).
+    - Si el usuario no había votado: registra el voto (add).
+
+    Retorna: (upvotes_totales, downvotes_totales, accion_realizada: 'added' | 'removed' | 'switched')
+    """
+    check_query = "SELECT vote_type FROM suggestion_votes WHERE suggestion_id = ? AND user_id = ?;"
+    existing = await db_manager.fetch_one(check_query, (suggestion_id, user_id))
+
+    if existing:
+        current_type = existing["vote_type"]
+        if current_type == vote_type:
+            # Eliminar voto
+            await db_manager.execute(
+                "DELETE FROM suggestion_votes WHERE suggestion_id = ? AND user_id = ?;",
+                (suggestion_id, user_id),
+            )
+            action = "removed"
+        else:
+            # Cambiar voto
+            await db_manager.execute(
+                "UPDATE suggestion_votes SET vote_type = ? WHERE suggestion_id = ? AND user_id = ?;",
+                (vote_type, suggestion_id, user_id),
+            )
+            action = "switched"
+    else:
+        # Añadir nuevo voto
+        await db_manager.execute(
+            "INSERT INTO suggestion_votes (suggestion_id, user_id, vote_type) VALUES (?, ?, ?);",
+            (suggestion_id, user_id, vote_type),
+        )
+        action = "added"
+
+    # Recalcular conteos totales de votos
+    count_query = """
+    SELECT
+        COUNT(CASE WHEN vote_type = 1 THEN 1 END) AS up,
+        COUNT(CASE WHEN vote_type = -1 THEN 1 END) AS down
+    FROM suggestion_votes
+    WHERE suggestion_id = ?;
+    """
+    counts = await db_manager.fetch_one(count_query, (suggestion_id,))
+    upvotes = counts["up"] if counts else 0
+    downvotes = counts["down"] if counts else 0
+
+    # Actualizar la fila en suggestions para lecturas rápidas
+    await db_manager.execute(
+        "UPDATE suggestions SET upvotes = ?, downvotes = ? WHERE suggestion_id = ?;",
+        (upvotes, downvotes, suggestion_id),
+    )
+
+    return upvotes, downvotes, action
+
+
 async def update_suggestion_status(
     suggestion_id: int,
     status: str,
     staff_comment: Optional[str],
     reviewed_by: int
-) -> None:
-    """Actualiza el estado de una sugerencia (APPROVED, REJECTED, IN_PROGRESS)."""
+) -> Optional[Dict[str, Any]]:
+    """Actualiza el estado de una sugerencia (APPROVED, REJECTED, IN_PROGRESS) y retorna la fila actualizada."""
     query = """
     UPDATE suggestions
     SET status = ?, staff_comment = ?, reviewed_by = ?
     WHERE suggestion_id = ?;
     """
     await db_manager.execute(query, (status.upper(), staff_comment, reviewed_by, suggestion_id))
+    return await get_suggestion(suggestion_id)
 
 
 # ==============================================================================
