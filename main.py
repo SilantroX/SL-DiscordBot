@@ -98,10 +98,10 @@ class DiscordBot(commands.Bot):
             logger.info("⚡ Latencia actual: %.2f ms", self.bot_latency_ms)
             logger.info("==================================================")
 
-        # Establecer presencia visual
+        # Establecer presencia visual personalizada y motivadora
         activity = discord.Activity(
             type=discord.ActivityType.watching,
-            name="/help • Bot Modular v0.0.0",
+            name="SilantroLabs • Innovando el futuro 🚀 (/help)",
         )
         await self.change_presence(status=discord.Status.online, activity=activity)
 

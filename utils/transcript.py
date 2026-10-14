@@ -129,7 +129,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         {messages_html}
     </div>
     <div class="footer">
-        Generado por Antigravity Bot • Sistema de Soporte y Tickets
+        Generado por SilantroLabs Bot • Sistema de Soporte y Tickets
     </div>
 </body>
 </html>

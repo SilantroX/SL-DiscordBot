@@ -41,7 +41,7 @@ class EmbedBuilder:
             color=color,
             timestamp=datetime.now(timezone.utc),
         )
-        embed.set_footer(text="Bot Discord • Sistema Modular")
+        embed.set_footer(text="SilantroLabs • Discord Bot")
         return embed
 
     @staticmethod
@@ -155,5 +155,5 @@ class EmbedBuilder:
                 inline=False,
             )
 
-        embed.set_footer(text=f"ID: {suggestion_id} • Bot Discord")
+        embed.set_footer(text=f"ID: {suggestion_id} • SilantroLabs Bot")
         return embed

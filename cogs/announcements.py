@@ -451,7 +451,7 @@ class AnnouncementsCog(commands.Cog, name="Anuncios"):
                 inline=False,
             )
 
-        embed.set_footer(text="Bot Discord • Auditoría de Anuncios")
+        embed.set_footer(text="SilantroLabs • Auditoría de Anuncios")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 

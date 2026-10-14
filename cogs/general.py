@@ -17,7 +17,7 @@ from database.connection import db_manager
 from utils.embeds import EmbedBuilder, EmbedColors
 
 # Versión del bot
-BOT_VERSION = "0.0.0"
+BOT_VERSION = "1.0.0"
 
 
 class GeneralCog(commands.Cog, name="General"):
@@ -62,8 +62,8 @@ class GeneralCog(commands.Cog, name="General"):
         uptime_str = f"{hours}h {minutes}m {seconds}s"
 
         embed = EmbedBuilder.base(
-            title="🤖 Información y Estadísticas del Bot",
-            description="Bot multipropósito modular para Discord programado en Python.",
+            title="🤖 Información y Estadísticas • SilantroLabs Bot",
+            description="Bot multipropósito modular para Discord de SilantroLabs programado en Python.",
             color=EmbedColors.PRIMARY,
         )
         embed.add_field(name="📌 Versión", value=f"`v{BOT_VERSION}`", inline=True)
@@ -79,10 +79,10 @@ class GeneralCog(commands.Cog, name="General"):
     async def help_command(self, interaction: discord.Interaction) -> None:
         """Despliega una lista explicativa de los módulos que integran el bot."""
         embed = EmbedBuilder.base(
-            title="📖 Menú de Ayuda y Módulos",
+            title="📖 Menú de Ayuda • SilantroLabs Bot",
             description=(
-                "Bienvenido al panel de ayuda. A continuación se detallan los módulos "
-                "que conforman este bot:"
+                "Bienvenido al panel de ayuda de **SilantroLabs Bot**. A continuación se detallan los módulos "
+                "disponibles en este servidor:"
             ),
             color=EmbedColors.PRIMARY,
         )

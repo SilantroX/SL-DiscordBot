@@ -176,7 +176,7 @@ class TestBaseArchitecture(unittest.IsolatedAsyncioTestCase):
         embed_success = EmbedBuilder.success("Operación Exitosa", "Se aplicó el cambio.")
         self.assertEqual(embed_success.color, EmbedColors.SUCCESS)
         self.assertIn("Operación Exitosa", embed_success.title or "")
-        self.assertIn("Bot Discord", embed_success.footer.text or "")
+        self.assertIn("SilantroLabs", embed_success.footer.text or "")
 
         embed_error = EmbedBuilder.error("Error Grave", "Fallo de conexión.")
         self.assertEqual(embed_error.color, EmbedColors.ERROR)

@@ -1,12 +1,12 @@
-# 🤖 Bot de Discord Modular en Python (discord.py v2)
+# 🤖 SilantroLabs Bot — Bot de Discord Modular en Python (discord.py v2)
 
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![discord.py](https://img.shields.io/badge/discord.py-v2.4%2B-5865F2.svg)](https://github.com/Rapptz/discord.py)
 [![Database](https://img.shields.io/badge/database-SQLite%20(aiosqlite)-99AAB5.svg)](https://github.com/omnilib/aiosqlite)
-[![Version](https://img.shields.io/badge/version-0.0.0-green.svg)](#versiones)
+[![Version](https://img.shields.io/badge/version-1.0.0-green.svg)](#versiones)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE)
 
-Un bot de Discord profesional, modular, escalable y completamente tipado, diseñado con **Python 3.10+**, **discord.py v2** y una base de datos relacional asíncrona con **SQLite**.
+**SilantroLabs Bot** es un bot de Discord profesional, modular, escalable y completamente tipado, diseñado con **Python 3.10+**, **discord.py v2** y una base de datos relacional asíncrona con **SQLite**.
 
 ---
 

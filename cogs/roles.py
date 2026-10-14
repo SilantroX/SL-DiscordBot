@@ -62,7 +62,7 @@ def build_role_panel_embed(
         )
 
     footer_id = f"ID de Panel: {menu_id} • " if menu_id else ""
-    embed.set_footer(text=f"{footer_id}Bot Discord • Sistema de Autoroles")
+    embed.set_footer(text=f"{footer_id}SilantroLabs • Discord Bot")
     return embed
 
 
