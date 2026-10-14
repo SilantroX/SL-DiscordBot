@@ -91,7 +91,7 @@ Bot Discord/
 
 ### 2. Configurar la Aplicación en Discord Developer Portal
 1. Ve a [Discord Developer Portal](https://discord.com/developers/applications) y haz clic en **New Application**.
-2. Dale un nombre a tu bot (ej. `Antigravity Bot`).
+2. Dale un nombre a tu bot (ej. `Silantro Labs Bot`).
 3. Ve a la pestaña **Bot**:
    * Haz clic en **Reset Token** y copia el token generado (este será tu `DISCORD_TOKEN`).
    * Desplázate hacia abajo hasta **Privileged Gateway Intents** y activa:
@@ -161,6 +161,15 @@ Al iniciar por primera vez:
 ---
 
 ## 📌 Versiones y Registro de Cambios (Changelog)
+
+* **v0.5.0**: **Módulo 5 - Anuncios con Replicación desde Canal Privado**.
+  - Comando `/setup_anuncios <canal>`: Configuración del canal oficial global para difusión de comunicados.
+  - Comando `/anuncio [mencion]`: Apertura de formulario modal interactivo (`AnnouncementModal`) desde un canal privado de moderación para redactar título, contenido enriquecido (Markdown) y URL de banner.
+  - Vista previa de seguridad (Preview): Genera el embed de previsualización idéntico al final con controles interactivos `[🚀 Publicar Anuncio]` y `[❌ Cancelar]`.
+  - Replicación y difusión: Publica instantáneamente en el canal público oficial con menciones opcionales (`@everyone`, `@here` o ninguna).
+  - Auditoría y trazabilidad: Registro del anuncio en SQLite (`announcements`) y en el canal de auditoría `#mod-logs`.
+  - Comando `/anuncios_historial [limite]`: Consulta administrativa del registro histórico de anuncios emitidos.
+  - Cobertura completa de pruebas unitarias (`tests/test_announcements.py`).
 
 * **v0.4.0**: **Módulo 4 - Autoroles Interactivos**.
   - Comando `/setup_autoroles <canal> <titulo> [descripcion]`: Despliegue de paneles públicos con vista persistente `[🎭 Seleccionar Roles]`.

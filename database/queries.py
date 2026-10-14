@@ -306,3 +306,15 @@ async def log_announcement(
     """
     cursor = await db_manager.execute(query, (guild_id, author_id, target_channel_id, published_message_id, title, content, mention_type))
     return cursor.lastrowid or 0
+
+
+async def get_announcements_by_guild(guild_id: int, limit: int = 10) -> List[Dict[str, Any]]:
+    """Obtiene el historial de los últimos anuncios publicados en el servidor."""
+    query = """
+    SELECT * FROM announcements
+    WHERE guild_id = ?
+    ORDER BY created_at DESC
+    LIMIT ?;
+    """
+    rows = await db_manager.fetch_all(query, (guild_id, limit))
+    return [dict(r) for r in rows]
