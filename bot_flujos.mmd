@@ -1,0 +1,123 @@
+flowchart TD
+    classDef discord fill:#5865F2,stroke:#4752C4,stroke-width:2px,color:#fff;
+    classDef botCore fill:#2C2F33,stroke:#23272A,stroke-width:2px,color:#fff;
+    classDef admin fill:#ED4245,stroke:#C03537,stroke-width:2px,color:#fff;
+    classDef tickets fill:#57F287,stroke:#3BA55D,stroke-width:2px,color:#000;
+    classDef sug fill:#FEE75C,stroke:#D8C34E,stroke-width:2px,color:#000;
+    classDef roles fill:#EB459E,stroke:#B22E73,stroke-width:2px,color:#fff;
+    classDef news fill:#FFA500,stroke:#CC8400,stroke-width:2px,color:#000;
+    classDef db fill:#99AAB5,stroke:#7289DA,stroke-width:2px,color:#000;
+
+    subgraph PlataformaDiscord ["🌐 Discord API & Clientes"]
+        User["👤 Usuario / Miembro"]:::discord
+        Staff["🛡️ Moderador / Admin"]:::discord
+        D_API["⚡ Discord Gateway & REST API"]:::discord
+    end
+
+    subgraph CoreBot ["🤖 Core del Bot (Python discord.py v2)"]
+        Main["🚀 main.py / Client Setup"]:::botCore
+        CogLoader["🧩 Gestor de Cogs / Extensiones"]:::botCore
+        DB[("💾 SQLite Database (aiosqlite)
+• guild_config
+• infractions
+• tickets
+• suggestions
+• role_menus
+• announcements")]:::db
+    end
+
+    subgraph ModuloAdmin ["🛡️ 1. Módulo Administración"]
+        AdminCogs["Comandos Slash (/ban, /kick, /timeout, /clear, /warn)"]:::admin
+        RoleCheck{"¿Jerarquía & Permisos OK?"}:::admin
+        ModLog["📝 Canal de Logs / Auditoría"]:::admin
+        WarnSystem["⚠️ Registro de Sanciones"]:::admin
+    end
+
+    subgraph ModuloTickets ["🎫 2. Módulo de Tickets"]
+        TicketPanel["📌 Panel Fijo (Persistent View)
+Botón: '📩 Crear Ticket'"]:::tickets
+        TicketModal["📝 Modal Interactivo (Asunto / Motivo)"]:::tickets
+        ChannelCreate["🔒 Crear Canal Privado (ticket-user-id)
+Permisos: Usuario + Staff + Bot"]:::tickets
+        TicketControls["🎛️ Controles: Reclamar | Transcribir | Cerrar"]:::tickets
+        Transcript["📄 Generador Transcripción (HTML/TXT)"]:::tickets
+    end
+
+    subgraph ModuloSugerencias ["💡 3. Módulo de Sugerencias"]
+        SugTrigger["Comando /sugerir o Botón Modal"]:::sug
+        SugEmbed["📊 Embed en #sugerencias
+Botones de Voto: 👍 / 👎"]:::sug
+        StaffReview{"Evaluación del Staff
+(Aprobar / Rechazar)"}:::sug
+        SugUpdated["🟢 Aprobada / 🔴 Rechazada
+(Actualización Embed + DM)"]:::sug
+    end
+
+    subgraph ModuloRoles ["🎭 4. Módulo de Autoroles"]
+        RoleSetup["Comando /setup autoroles"]:::roles
+        RolePanel["📌 Embed Fijo con Botón Persistente
+[🎭 Elegir Roles]"]:::roles
+        RoleSelectMenu["🔽 Menú Desplegable Efímero (StringSelect)
+Multi-selección"]:::roles
+        RoleApply["🔄 Sincronizar Roles (Add/Remove)"]:::roles
+    end
+
+    subgraph ModuloAnuncios ["📢 5. Módulo de Anuncios"]
+        NewsCommand["Comando /anuncio en Canal Privado Staff"]:::news
+        NewsModal["📝 Modal: Título, Cuerpo, Mención (@everyone/@here), Imagen"]:::news
+        NewsPreview["👁️ Vista Previa en Canal Privado
+Botones: [🚀 Publicar] [❌ Cancelar]"]:::news
+        NewsPublish["🌐 Publicación Oficial en Canal Global #anuncios
+(Embed estilizado + Ping seguro)"]:::news
+    end
+
+    %% Relaciones Gateway
+    User -->|Interacciones UI| D_API
+    Staff -->|Comandos Slash / Config| D_API
+    D_API <--> Main
+    Main --> CogLoader
+    CogLoader --> AdminCogs
+    CogLoader --> TicketPanel
+    CogLoader --> SugTrigger
+    CogLoader --> RoleSetup
+    CogLoader --> NewsCommand
+    Main <--> DB
+
+    %% Flujos Administración
+    AdminCogs --> RoleCheck
+    RoleCheck -->|Permiso Válido| WarnSystem
+    WarnSystem --> DB
+    WarnSystem --> ModLog
+    WarnSystem --> D_API
+
+    %% Flujos Tickets
+    TicketPanel -->|Clic Botón| TicketModal
+    TicketModal --> ChannelCreate
+    ChannelCreate --> TicketControls
+    ChannelCreate --> DB
+    TicketControls -->|Cerrar Ticket| Transcript
+    Transcript --> DB
+    Transcript --> ModLog
+
+    %% Flujos Sugerencias
+    SugTrigger --> SugEmbed
+    SugEmbed --> DB
+    SugEmbed --> StaffReview
+    StaffReview --> SugUpdated
+    SugUpdated --> DB
+
+    %% Flujos Autoroles
+    RoleSetup --> RolePanel
+    RolePanel -->|Clic en Botón| RoleSelectMenu
+    RoleSelectMenu --> RoleApply
+    RoleApply --> DB
+    RoleApply --> D_API
+
+    %% Flujos Anuncios
+    Staff --> NewsCommand
+    NewsCommand --> NewsModal
+    NewsModal --> NewsPreview
+    NewsPreview -->|Confirmar [Publicar]| NewsPublish
+    NewsPublish --> DB
+    NewsPublish --> ModLog
+    NewsPublish --> D_API
