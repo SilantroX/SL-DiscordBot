@@ -103,6 +103,20 @@ async def close_ticket(channel_id: int, transcript_url: Optional[str] = None) ->
     await db_manager.execute(query, (transcript_url, channel_id))
 
 
+async def claim_ticket(channel_id: int, staff_id: int) -> None:
+    """Asigna un ticket a un miembro del staff."""
+    query = "UPDATE tickets SET claimed_by = ? WHERE channel_id = ?;"
+    await db_manager.execute(query, (staff_id, channel_id))
+
+
+async def get_open_ticket_by_user(guild_id: int, user_id: int) -> Optional[Dict[str, Any]]:
+    """Verifica si el usuario ya tiene un ticket actualmente abierto en el servidor."""
+    query = "SELECT * FROM tickets WHERE guild_id = ? AND user_id = ? AND status = 'OPEN';"
+    row = await db_manager.fetch_one(query, (guild_id, user_id))
+    return dict(row) if row else None
+
+
+
 # ==============================================================================
 # 4. SUGERENCIAS (suggestions)
 # ==============================================================================
