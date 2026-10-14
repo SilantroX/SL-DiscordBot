@@ -71,6 +71,15 @@ class EmbedBuilder:
         )
 
     @staticmethod
+    def info(title: str, description: str) -> discord.Embed:
+        """Embed preconfigurado para mensajes informativos."""
+        return EmbedBuilder.base(
+            title=f"ℹ️ {title}",
+            description=description,
+            color=EmbedColors.PRIMARY,
+        )
+
+    @staticmethod
     def announcement(
         title: str,
         content: str,
