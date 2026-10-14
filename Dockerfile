@@ -1,5 +1,5 @@
 # Dockerfile para SilantroLabs Bot
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 # Evitar generación de archivos .pyc y habilitar salida sin búfer
 ENV PYTHONDONTWRITEBYTECODE=1
