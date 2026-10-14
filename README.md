@@ -162,6 +162,15 @@ Al iniciar por primera vez:
 
 ## 📌 Versiones y Registro de Cambios (Changelog)
 
+* **v0.4.0**: **Módulo 4 - Autoroles Interactivos**.
+  - Comando `/setup_autoroles <canal> <titulo> [descripcion]`: Despliegue de paneles públicos con vista persistente `[🎭 Seleccionar Roles]`.
+  - Menú desplegable efímero (`discord.ui.Select` / `StringSelect`): Menú multi-selección (`min_values=0, max_values=N`) visible de forma privada solo para el usuario (`ephemeral=True`), evitando inundar el canal.
+  - Pre-selección visual automática: Muestra los roles que el usuario ya posee marcados por defecto con `default=True`.
+  - Sincronización atómica de roles: Detecta y ejecuta en una sola interacción los roles a otorgar y los roles desmarcados a revocar.
+  - Validación estricta de jerarquía (`bot.top_role > rol`) para prevenir errores de permisos de Discord, junto a bloqueos de seguridad para `@everyone` y roles administrados por bots/integraciones.
+  - Comandos administrativos `/autorol_agregar_opcion`, `/autorol_eliminar_opcion` y `/autorol_listar`, con actualización en tiempo real del embed público.
+  - Cobertura completa de pruebas unitarias (`tests/test_roles.py`).
+
 * **v0.3.0**: **Módulo 3 - Sugerencias y Votaciones Comunitarias**.
   - Comando `/setup_suggestions <canal>`: Asignación oficial del canal de sugerencias con validación de permisos.
   - Comando `/sugerir <texto>`: Envío estructurado de sugerencias con embeds dinámicos y botones de votación.

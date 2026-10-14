@@ -246,10 +246,43 @@ async def add_role_option(menu_id: int, role_id: int, label: str, emoji: Optiona
     return cursor.lastrowid or 0
 
 
+async def get_role_menu(menu_id: int) -> Optional[Dict[str, Any]]:
+    """Obtiene la información de un menú de autoroles por su ID."""
+    query = "SELECT * FROM role_menus WHERE menu_id = ?;"
+    row = await db_manager.fetch_one(query, (menu_id,))
+    return dict(row) if row else None
+
+
+async def get_role_menu_by_message_id(message_id: int) -> Optional[Dict[str, Any]]:
+    """Obtiene la información de un menú de autoroles por el ID de su mensaje."""
+    query = "SELECT * FROM role_menus WHERE message_id = ?;"
+    row = await db_manager.fetch_one(query, (message_id,))
+    return dict(row) if row else None
+
+
 async def get_menu_options(menu_id: int) -> List[Dict[str, Any]]:
     """Obtiene todas las opciones de roles asociadas a un menú de autoroles."""
-    query = "SELECT * FROM role_options WHERE menu_id = ?;"
+    query = "SELECT * FROM role_options WHERE menu_id = ? ORDER BY option_id ASC;"
     rows = await db_manager.fetch_all(query, (menu_id,))
+    return [dict(r) for r in rows]
+
+
+async def delete_role_option_by_role(menu_id: int, role_id: int) -> None:
+    """Elimina una opción de rol de un menú específico."""
+    query = "DELETE FROM role_options WHERE menu_id = ? AND role_id = ?;"
+    await db_manager.execute(query, (menu_id, role_id))
+
+
+async def delete_role_menu(menu_id: int) -> None:
+    """Elimina un panel de autoroles y todas sus opciones asociadas (ON DELETE CASCADE)."""
+    query = "DELETE FROM role_menus WHERE menu_id = ?;"
+    await db_manager.execute(query, (menu_id,))
+
+
+async def get_role_menus_by_guild(guild_id: int) -> List[Dict[str, Any]]:
+    """Obtiene todos los paneles de autoroles configurados en un servidor."""
+    query = "SELECT * FROM role_menus WHERE guild_id = ? ORDER BY menu_id DESC;"
+    rows = await db_manager.fetch_all(query, (guild_id,))
     return [dict(r) for r in rows]
 
 
